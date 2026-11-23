@@ -1,4 +1,7 @@
 @echo off
+rem cmd читает .bat в кодировке консоли: переключаем на UTF-8, в конце возвращаем прежнюю
+for /f "tokens=2 delims=:" %%a in ('chcp') do set "OLD_CP=%%a"
+chcp 65001 >nul
 rem Запуск из исходников (для разработки). Обычный способ — dist\PipoAlexey.exe
 cd /d "%~dp0"
 
@@ -19,3 +22,4 @@ if exist ".venv\Scripts\pythonw.exe" (
 ) else (
     start "" pythonw main.py %*
 )
+chcp %OLD_CP% >nul

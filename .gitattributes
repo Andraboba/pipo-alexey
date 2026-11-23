@@ -1,0 +1,2 @@
+# cmd разбирает .bat построчно и ломается на LF — храним с CRLF
+*.bat text eol=crlf

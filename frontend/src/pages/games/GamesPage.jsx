@@ -9,7 +9,7 @@ import CustomGameForm from "./CustomGameForm.jsx";
 import "../../styles/games.css";
 
 export default function GamesPage() {
-  const { split, watchJob } = useStore();
+  const { split, watchJob, busy } = useStore();
   return (
     <section className="tab">
       <div className="intro">
@@ -29,7 +29,7 @@ export default function GamesPage() {
 
       <div className="list-head section-gap">
         <h2>Каталог игр</h2>
-        <Button onClick={async () => watchJob(await post("/api/split/profiles/refresh"))}>Обновить подсети по ASN</Button>
+        <Button disabled={busy} onClick={async () => watchJob(await post("/api/split/profiles/refresh"))}>Обновить подсети по ASN</Button>
       </div>
       <p className="hint" style={{ marginTop: -8 }}>
         Подсети берутся из RIPEstat по номерам сетей (ASN) издателей и игровых хостингов. Облака AWS, Google, Azure и

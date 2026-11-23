@@ -1,4 +1,5 @@
 import { go, useStore } from "../../store.jsx";
+import { Button } from "../../ui/controls.jsx";
 
 const GF = { all: "TCP + UDP", tcp: "только TCP", udp: "только UDP", disabled: "выключен" };
 
@@ -16,7 +17,7 @@ export default function GamesSummary() {
         <dt>Игровой фильтр</dt><dd>{GF[status.zapret.game_filter.mode]}</dd>
         <dt>Профили</dt><dd>{parts.join("; ") || (profiles.length ? "все «не трогать»" : "нет")}</dd>
       </dl>
-      <button className="btn" style={{ marginTop: 16 }} onClick={() => go("games")}>Настроить игры</button>
+      <Button style={{ marginTop: 16 }} onClick={() => go("games")}>Настроить игры</Button>
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { get, post } from "../../lib/api.js";
+import { plural } from "../../lib/format.js";
 import { useStore } from "../../store.jsx";
 import { Button, Switch } from "../../ui/controls.jsx";
 import { useConfirm } from "../../ui/ConfirmDialog.jsx";
+import { useToast } from "../../ui/Toasts.jsx";
 import TargetPicker from "./TargetPicker.jsx";
 import StrategyPicker from "./StrategyPicker.jsx";
 import ScanResults from "./ScanResults.jsx";
@@ -13,7 +15,8 @@ const DEFAULT_GROUPS = /^(Discord|YouTube|Игра:)/;
 const DPI_SUITE_SIZE = 36;
 
 export default function ScanPage() {
-  const { job, watchJob, status } = useStore();
+  const { job, watchJob, status, busy } = useStore();
+  const toast = useToast();
   const confirm = useConfirm();
   const [info, setInfo] = useState(null);
   const [picked, setPicked] = useState(new Set());
@@ -25,7 +28,7 @@ export default function ScanPage() {
     setInfo(d);
     setPicked((prev) => prev.size ? prev : new Set(d.targets.filter((t) => DEFAULT_GROUPS.test(t.group)).map((t) => t.id)));
     setStrategies((prev) => prev.size ? prev : new Set(d.strategies));
-  });
+  }).catch((e) => toast(e.message, true));
   useEffect(() => { load(); }, []);
 
   const scanJob = job?.kind === "scan" ? job : null;
@@ -36,15 +39,19 @@ export default function ScanPage() {
   const targetCount = picked.size + customCount + (dpi ? DPI_SUITE_SIZE : 0);
   const minutes = Math.max(1, Math.round(((strategies.size || 1) + 1) * (dpi ? 9 : 7) / 60));
 
+  const batWinws = status.zapret.service !== "running" && status.zapret.winws_running;
+
   const start = async () => {
     const ok = await confirm({
-      title: `Проверить ${strategies.size} стратегий на ${targetCount} целях?`,
+      title: `Проверить ${strategies.size} ${plural(strategies.size, "стратегию", "стратегии", "стратегий")} на ${targetCount} ${plural(targetCount, "цели", "целях", "целях")}?`,
       ok: "Начать подбор",
       body: (
         <ul>
           <li>Займёт около {minutes} мин. Всё это время интернет может подтормаживать.</li>
           <li>Запрет остановится; каждая стратегия запустится на пару секунд, IPSet временно станет «Все».</li>
-          <li>В конце всё вернётся как было{status.zapret.service === "running" ? ", служба запустится снова" : " — служба останется выключенной"}.</li>
+          {batWinws
+            ? <li><b>winws.exe запущен через .bat</b> — подбор его закроет, и вернуть его сам не сможет: после подбора запустите .bat снова.</li>
+            : <li>В конце всё вернётся как было{status.zapret.service === "running" ? ", служба запустится снова" : " — служба останется выключенной"}.</li>}
           <li>Ничего не применяется само: лучшую стратегию вы выберете кнопкой «Применить».</li>
         </ul>
       ),
@@ -88,14 +95,14 @@ export default function ScanPage() {
 
       <div className="scan-bar card">
         <div className="grow">
-          <b>{targetCount}</b> {targetCount === 1 ? "цель" : "целей"} · <b>{strategies.size}</b> стратегий · около {minutes} мин
+          <b>{targetCount}</b> {plural(targetCount, "цель", "цели", "целей")} · <b>{strategies.size}</b> {plural(strategies.size, "стратегия", "стратегии", "стратегий")} · около {minutes} мин
         </div>
         {running ? (
           <Button onClick={async () => post(`/api/jobs/${scanJob.id}/cancel`)} disabled={scanJob.cancelled}>
             {scanJob.cancelled ? "Останавливаю…" : "Остановить"}
           </Button>
         ) : (
-          <Button kind="solid" disabled={!targetCount || !strategies.size || !status.admin} onClick={start}>Начать подбор</Button>
+          <Button kind="solid" disabled={!targetCount || !strategies.size || !status.admin || busy} onClick={start}>Начать подбор</Button>
         )}
       </div>
 

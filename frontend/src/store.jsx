@@ -11,6 +11,7 @@ export const JOB_TITLE = {
   ipset: "Обновление списков",
   asn: "Обновление подсетей игр",
   scan: "Подбор стратегии",
+  recover: "Возврат запрета",
 };
 
 /** Всё состояние UI: статус служб, сплит, обновления, текущая фоновая задача. */
@@ -56,24 +57,41 @@ export function StoreProvider({ children }) {
     setUpdates(await get("/api/updates" + (force ? "?force=1" : "")));
   }, []);
 
-  const watchJob = useCallback(async (j) => {
-    if (watching.current === j.id) return;
-    watching.current = j.id;
-    setJob(j);
-    while (j.state === "running") {
-      await new Promise((r) => setTimeout(r, 700));
-      try { j = await get(`/api/jobs/${j.id}`); } catch { continue; }
-      setJob(j);
-    }
-    watching.current = null;
-    if (j.state === "done") {
-      toast(JOB_TITLE[j.kind] + ": готово");
-      checkUpdates(true).catch(() => {});
-      loadSplit();
-    } else {
-      toast(JOB_TITLE[j.kind] + ": ошибка — " + (j.log.at(-2)?.text || "подробности в журнале"), true);
-    }
-    refreshStatus();
+  /** Следить за фоновой задачей до конца. Ничего не возвращает: ждать её не нужно, для кнопок есть `busy`. */
+  const watchJob = useCallback((j0) => {
+    if (watching.current === j0.id) return;
+    watching.current = j0.id;
+    setJob(j0);
+    (async () => {
+      let j = j0;
+      let fails = 0;
+      while (j.state === "running") {
+        await new Promise((r) => setTimeout(r, 700));
+        try {
+          j = await get(`/api/jobs/${j.id}`);
+          fails = 0;
+          setJob(j);
+        } catch (e) {
+          // сервер перезапустили (новый токен, задачи нет) или он пропал — не крутимся вечно
+          if (e.status === 403 || e.status === 404 || ++fails >= 10) {
+            watching.current = null;
+            setJob(null);
+            toast(JOB_TITLE[j.kind] + ": связь с задачей потеряна", true);
+            refreshStatus();
+            return;
+          }
+        }
+      }
+      watching.current = null;
+      if (j.state === "done") {
+        toast(JOB_TITLE[j.kind] + ": готово");
+        checkUpdates(true).catch(() => {});
+        loadSplit();
+      } else {
+        toast(JOB_TITLE[j.kind] + ": ошибка — " + (j.log.at(-2)?.text || "подробности в журнале"), true);
+      }
+      refreshStatus();
+    })();
   }, [toast, checkUpdates, loadSplit, refreshStatus]);
 
   // старт: статус, сплит, проверка версий (только сравнение номеров, ничего не скачивается)
@@ -98,6 +116,8 @@ export function StoreProvider({ children }) {
     updates, checkUpdates,
     presets, loadPresets,
     job, watchJob,
+    /** идёт любая фоновая задача — сервер всё равно ответит 409 на изменения, кнопки гасим заранее */
+    busy: job?.state === "running",
     restartNeeded, setRestartNeeded,
     /** для ответов вида { status, restart_needed } */
     applyResp: (r) => { if (r.status) setZapret(r.status); if (r.restart_needed) setRestartNeeded(true); },

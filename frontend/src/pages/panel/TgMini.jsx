@@ -1,6 +1,6 @@
 import { tgView } from "../../lib/status.js";
 import { go, useStore } from "../../store.jsx";
-import { Lamp } from "../../ui/controls.jsx";
+import { Button, Lamp } from "../../ui/controls.jsx";
 
 export default function TgMini() {
   const { status } = useStore();
@@ -13,7 +13,7 @@ export default function TgMini() {
         <div className="eyebrow">TG WS Proxy</div>
         <div>{view.label}{tg.version ? " · " + tg.version : ""}</div>
       </div>
-      <button className="btn" onClick={() => go("telegram")}>Открыть</button>
+      <Button onClick={() => go("telegram")}>Открыть</Button>
     </div>
   );
 }

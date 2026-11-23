@@ -23,7 +23,7 @@ import re
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, fields, asdict
 from pathlib import Path
 
 from . import zapret
@@ -196,18 +196,31 @@ def _save_state(st: State) -> None:
 
 def load(zdir: Path) -> State:
     with _lock:
+        sf = _state_file()
         try:
-            raw = json.loads(_state_file().read_text(encoding="utf-8"))
+            raw = json.loads(sf.read_text(encoding="utf-8"))
             return State(
-                rules=[Rule(**r) for r in raw.get("rules", [])],
-                profiles=[Profile(**p) for p in raw.get("profiles", [])],
+                rules=[_from_dict(Rule, r) for r in raw.get("rules", [])],
+                profiles=[_from_dict(Profile, p) for p in raw.get("profiles", [])],
                 ipset_all_sha=raw.get("ipset_all_sha"),
                 applied_at=raw.get("applied_at"),
             )
-        except (OSError, ValueError, TypeError):
-            st = _bootstrap(zdir)
-            _save_state(st)
-            return st
+        except FileNotFoundError:
+            pass
+        except (ValueError, TypeError, AttributeError):
+            # битый файл не затираем молча: откладываем рядом, правила можно достать руками.
+            # Не удалось отложить — ошибка наружу, но не bootstrap поверх правил.
+            sf.replace(sf.with_name(f"{sf.name}.corrupt-{time.strftime('%Y%m%d-%H%M%S')}"))
+        # прочие OSError (файл занят антивирусом, нет доступа) — это не порча: летят наружу, файл цел
+        st = _bootstrap(zdir)
+        _save_state(st)
+        return st
+
+
+def _from_dict(cls, d: dict):
+    """Поля из другой версии приложения не ломают загрузку."""
+    names = {f.name for f in fields(cls)}
+    return cls(**{k: v for k, v in d.items() if k in names})
 
 
 def _bootstrap(zdir: Path) -> State:
@@ -656,8 +669,9 @@ def _backup_originals(zdir: Path) -> None:
 def _write_ipset_all(zdir: Path, st: State, mode: str) -> None:
     all_file = zapret.ipset_all(zdir)
     # кто-то обновил ipset-all мимо нас (service.bat → Update IPSet List) — берём его как новую базу
+    # смотрим на то, что лежит сейчас, а не на целевой режим: иначе переход в «Все» затрёт свежий список
     cur_sha = _sha(all_file)
-    if mode == "loaded" and st.ipset_all_sha and cur_sha and cur_sha != st.ipset_all_sha:
+    if zapret.ipset_mode(zdir) == "loaded" and st.ipset_all_sha and cur_sha and cur_sha != st.ipset_all_sha:
         set_base(read_list(all_file))
     merged = _merged_ipset(zdir, st)
     if not merged:

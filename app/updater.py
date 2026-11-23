@@ -16,7 +16,7 @@ import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from . import split, tgproxy, zapret
+from . import split, suspend, tgproxy, zapret
 from .jobs import Job
 from .settings import DATA_DIR, write_text_atomic
 
@@ -69,6 +69,8 @@ def download(url: str, dest: Path, sha256: str | None, job: Job | None = None) -
     if job:
         job.progress = None
         job.say(f"Скачано {done / 1024 / 1024:.1f} МБ" + (", sha256 совпадает" if sha256 else ""))
+        if not sha256:
+            job.say("GitHub не прислал контрольную сумму — файл не проверен", "warn")
     return dest
 
 
@@ -227,35 +229,27 @@ def update_zapret(job: Job, zdir: Path, expected: str | None) -> dict:
     copy, keep = plan_files(new_root)
     job.say(f"Файлов к установке: {len(copy)}; сохраняю ваши: {', '.join(keep) or '—'}")
 
-    was_state = zapret.service_state()
-    was_running = was_state == "running" or zapret.winutil.process_running("winws.exe")
     strategy = zapret.installed_strategy()
-    if was_running or was_state is not None:
-        job.say("Останавливаю запрет и драйвер WinDivert")
-    zapret.stop_all(stop_driver=True)
-
     backup = DATA_DIR / "backups" / f"zapret-{old or 'unknown'}-{time.strftime('%Y%m%d-%H%M%S')}.zip"
-    install_files(new_root, zdir, copy, backup, job)
-    write_text_atomic(zdir / "version.txt", ver)
-    job.say(f"Файлы обновлены, бэкап прежних: {backup}")
+    job.say("Останавливаю запрет и драйвер WinDivert")
+    # что бы ни случилось с файлами, запрет вернётся в прежнее состояние
+    with suspend.suspended(zdir, job.say, stop_driver=True) as was:
+        install_files(new_root, zdir, copy, backup, job)
+        write_text_atomic(zdir / "version.txt", ver)
+        job.say(f"Файлы обновлены, бэкап прежних: {backup}")
 
-    try:
-        split.apply(zdir)
-        job.say("Сплит-правила и игровые профили применены заново")
-    except Exception as e:  # noqa: BLE001
-        job.say(f"Не удалось применить сплит-правила: {e}", "warn")
+        try:
+            split.apply(zdir)
+            job.say("Сплит-правила и игровые профили применены заново")
+        except Exception as e:  # noqa: BLE001
+            job.say(f"Не удалось применить сплит-правила: {e}", "warn")
 
-    if was_state is not None and strategy:
-        if strategy in zapret.list_strategies(zdir):
-            zapret.reconfigure_service(zdir)
-            job.say(f"Служба перенастроена на стратегию «{strategy}» из новой версии")
-        else:
-            job.say(f"Стратегии «{strategy}» нет в новой версии — выберите другую", "warn")
-    if was_running and was_state == "running":
-        zapret.start_service()
-        job.say("Запрет снова запущен")
-    elif was_running:
-        job.say("winws.exe был запущен через .bat — запустите его заново", "warn")
+        if was.service is not None and strategy:
+            if strategy in zapret.list_strategies(zdir):
+                zapret.reconfigure_service(zdir)
+                job.say(f"Служба перенастроена на стратегию «{strategy}» из новой версии")
+            else:
+                job.say(f"Стратегии «{strategy}» нет в новой версии — выберите другую", "warn")
     shutil.rmtree(new_root.parent if new_root.parent.name.startswith("zapret-") else new_root, ignore_errors=True)
     _cache.pop(ZAPRET_REPO, None)
     job.say(f"Готово: {old} → {ver}", "ok")
@@ -323,20 +317,26 @@ def update_tg(job: Job, expected: str | None) -> dict:
                 break
             time.sleep(0.25)
     backup = None
-    if exe.exists():
-        backup = DATA_DIR / "backups" / f"TgWsProxy-{old or 'unknown'}-{time.strftime('%Y%m%d-%H%M%S')}.exe"
-        backup.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(exe, backup)
-    exe.parent.mkdir(parents=True, exist_ok=True)
     tmp = exe.with_name(exe.name + ".pipo-new")
-    shutil.copy2(new, tmp)
-    tmp.replace(exe)
-    tgproxy.write_version(exe, ver)
-    new.unlink(missing_ok=True)
-    job.say(f"Установлено: {old or '—'} → {ver}" + (f", бэкап: {backup}" if backup else ""))
-    if was_running:
-        tgproxy.start(exe)
-        job.say("TG WS Proxy снова запущен")
+    try:
+        if exe.exists():
+            backup = DATA_DIR / "backups" / f"TgWsProxy-{old or 'unknown'}-{time.strftime('%Y%m%d-%H%M%S')}.exe"
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(exe, backup)
+        exe.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(new, tmp)
+        tmp.replace(exe)
+        tgproxy.write_version(exe, ver)
+        new.unlink(missing_ok=True)
+        job.say(f"Установлено: {old or '—'} → {ver}" + (f", бэкап: {backup}" if backup else ""))
+    finally:
+        tmp.unlink(missing_ok=True)
+        if was_running:  # даже если exe был занят и замена не удалась — прокси не оставляем выключенным
+            try:
+                tgproxy.start(exe)
+                job.say("TG WS Proxy снова запущен")
+            except OSError as e:
+                job.say(f"Не удалось запустить TG WS Proxy: {e}", "error")
     _cache.pop(TG_REPO, None)
     job.say("Готово", "ok")
     return {"from": old, "to": ver}

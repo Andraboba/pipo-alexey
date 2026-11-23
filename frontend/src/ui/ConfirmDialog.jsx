@@ -7,7 +7,10 @@ export function ConfirmProvider({ children }) {
   const [req, setReq] = useState(null);
   const ref = useRef(null);
 
-  const confirm = useCallback((opts) => new Promise((resolve) => setReq({ ...opts, resolve })), []);
+  const confirm = useCallback((opts) => new Promise((resolve) => setReq((prev) => {
+    prev?.resolve(false); // новый вопрос вытеснил старый — старая кнопка не должна висеть в «busy»
+    return { ...opts, resolve };
+  })), []);
 
   useEffect(() => {
     if (req && ref.current && !ref.current.open) ref.current.showModal();
@@ -28,8 +31,8 @@ export function ConfirmProvider({ children }) {
             <h3>{req.title}</h3>
             <div className="confirm-body">{req.body}</div>
             <div className="row end">
-              <button className="btn ghost" onClick={() => close(false)}>Отмена</button>
-              <button className={"btn solid" + (req.danger ? " danger" : "")} onClick={() => close(true)} autoFocus>
+              <button type="button" className="btn ghost" onClick={() => close(false)}>Отмена</button>
+              <button type="button" className={"btn solid" + (req.danger ? " danger" : "")} onClick={() => close(true)} autoFocus>
                 {req.ok || "Да"}
               </button>
             </div>

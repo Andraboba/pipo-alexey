@@ -18,9 +18,30 @@ class ParseTests(unittest.TestCase):
             ("url", "https://example.com", None), ("url", "https://x.org/a", None),
         ])
 
-    def test_sample_hosts(self):
-        self.assertEqual(scan.sample_hosts(["2a00::/16", "10.0.0.0/24", "10.1.0.5/32", "10.2.0.0/24", "10.3.0.0/24"]),
-                         ["10.0.0.1", "10.1.0.5", "10.2.0.1"])
+    def test_grade_ignores_dead_and_tls13_ceiling(self):
+        """Случай из жизни: Discord заблокирован, tnt-ea.com не резолвится нигде,
+        iracing.com везде «наполовину» (нет TLS 1.3 на сервере)."""
+        r = lambda s: {"score": s, "detail": "", "ms": 100}
+        targets = [{"id": i, "name": i} for i in ("discord", "dead", "iracing")]
+        res = {
+            "targets": targets,
+            "baseline": {"discord": r(0), "dead": r(0), "iracing": r(0.5)},
+            "rows": [
+                {"strategy": "ALT", "state": "done", "ms": 300, "results": {"discord": r(1), "dead": r(0), "iracing": r(0.5)}},
+                {"strategy": "BAD", "state": "done", "ms": 300, "results": {"discord": r(0), "dead": r(0), "iracing": r(0)}},
+            ],
+        }
+        scan.grade(res)
+        self.assertEqual({k: v["status"] for k, v in res["meta"].items()}, {"discord": "blocked", "dead": "dead", "iracing": "open"})
+        alt, bad = res["rows"]
+        self.assertEqual((alt["score"], alt["of"], alt["grade"], alt["fixed"], alt["broke"]), (2, 2, "ideal", 1, 0))
+        self.assertEqual((bad["score"], bad["grade"], bad["broke"]), (0, "broken", 1))  # сломала открытый iracing
+        self.assertEqual(res["best"], "ALT")
+
+    def test_game_targets_are_real_hosts(self):
+        from app import presets
+        self.assertTrue(all(p.get("probe") for p in presets.PRESETS))
+        self.assertIn("members-ng.iracing.com", presets.get("iracing")["probe"])
 
     def test_dpi_freeze_detection(self):
         t = {"host": "x"}

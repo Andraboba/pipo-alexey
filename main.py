@@ -104,6 +104,15 @@ def open_edge_app(url: str) -> subprocess.Popen | None:
     return None
 
 
+def recover_after_crash() -> None:
+    """Прошлый запуск закрыли посреди подбора/обновления — вернуть службу и IPSet.
+
+    Обычной задачей: пока идёт возврат, подбор или обновление не стартуют и не затрут журнал."""
+    from app import jobs, suspend
+    if suspend.pending():
+        jobs.start("recover", lambda job: suspend.recover(job.say))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
@@ -118,6 +127,8 @@ def main() -> None:
         # отказ от UAC — продолжаем в режиме просмотра
 
     setup_logging()
+    if winutil.is_admin():
+        recover_after_crash()
     port = free_port(args.port)
     url = f"http://127.0.0.1:{port}/"
     try:
@@ -145,6 +156,9 @@ def main() -> None:
         else:
             winutil.open_url_unelevated(url)
             thread.join()
+    from app import jobs
+    if not jobs.shutdown(timeout=30):  # подбор/обновление сами вернут запрет; не дождались — вернёт recover при старте
+        log.warning("задача не завершилась за 30 с — запрет вернётся при следующем запуске")
     server.should_exit = True
     thread.join(timeout=5)
 

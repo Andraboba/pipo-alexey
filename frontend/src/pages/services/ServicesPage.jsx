@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { del, get, post, put } from "../../lib/api.js";
+import { plural } from "../../lib/format.js";
 import { useStore } from "../../store.jsx";
 import { Button, Seg } from "../../ui/controls.jsx";
 import { useConfirm } from "../../ui/ConfirmDialog.jsx";
@@ -37,7 +38,7 @@ export default function ServicesPage() {
 
   const apply = async (names = picked) => {
     const ok = await confirm({
-      title: names.size ? `Записать ${names.size} сервис(ов) в hosts?` : "Убрать все правила из hosts?",
+      title: names.size ? `Записать ${names.size} ${plural(names.size, "сервис", "сервиса", "сервисов")} в hosts?` : "Убрать все правила из hosts?",
       ok: names.size ? "Записать" : "Убрать",
       body: names.size ? (
         <ul>

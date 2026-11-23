@@ -23,7 +23,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import split, winutil, zapret
+from . import split, suspend, winutil, zapret
 from .jobs import Job
 
 CURL = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "curl.exe"
@@ -67,35 +67,25 @@ def parse_targets_txt(zdir: Path) -> list[dict]:
     return out
 
 
-def sample_hosts(networks: list[str], limit: int = 3) -> list[str]:
-    """Несколько адресов из подсетей игры: первый узел из первых сетей (IPv4)."""
-    out = []
-    for n in networks:
-        try:
-            net = ipaddress.ip_network(n, strict=False)
-        except ValueError:
-            continue
-        if net.version != 4:
-            continue
-        host = net.network_address + 1 if net.num_addresses > 2 else net.network_address
-        out.append(str(host))
-        if len(out) >= limit:
-            break
-    return out
-
-
 def available_targets(zdir: Path) -> list[dict]:
+    """Цели Flowseal + реальные адреса игровых профилей.
+
+    Для игр берём только хосты, которые точно отвечают (поле probe в каталоге). Голые домены
+    вроде steamstatic.com часто не открываются сами по себе, а «первый адрес подсети» —
+    случайный IP, на котором может не быть сервера: такие цели не говорят о блокировке.
+    Игровой UDP-трафик так не проверить — только сайт, лаунчер и API игры.
+    """
+    from . import presets
     targets = parse_targets_txt(zdir)
-    snap = split.snapshot(zdir)
-    for p in snap["profiles"]:
+    for t in targets:
+        t["about"] = f"{t['group']} · список Flowseal"
+    for p in split.snapshot(zdir)["profiles"]:
         group = "Игра: " + p["name"]
-        for d in p["domains"]:
-            targets.append(_target(f"g-{p['id']}-{d}", d, "url", group, url="https://" + d))
-        st = split.load(zdir)
-        prof = next((x for x in st.profiles if x.id == p["id"]), None)
-        nets = split.profile_networks(zdir, prof) if prof else []
-        for ip in sample_hosts(nets):
-            targets.append(_target(f"g-{p['id']}-{ip}", ip, "ip", group, host=ip, port=443))
+        pr = presets.get(p["preset"]) if p.get("preset") else None
+        hosts = pr["probe"] if pr and pr.get("probe") else p["domains"]
+        for h in hosts:
+            targets.append(_target(f"g-{p['id']}-{h}", h, "url", group, url="https://" + h,
+                                   about=f"{p['name']} · сайт, лаунчер или API"))
     return targets
 
 
@@ -111,12 +101,13 @@ def parse_custom(text: str) -> list[dict]:
         host, port = (m.group(1), m.group(2)) if m else (s, None)
         try:
             ipaddress.ip_address(host)
-            out.append(_target("c-" + s, s, "ip", "Свои", host=host, port=int(port or 443)))
+            out.append(_target("c-" + s, s, "ip", "Свои", host=host, port=int(port or 443),
+                               about=f"Своя цель · TCP {port or 443} и ping"))
             continue
         except ValueError:
             pass
         url = s if re.match(r"^https?://", s, re.I) else "https://" + s
-        out.append(_target("c-" + s, s, "url", "Свои", url=url))
+        out.append(_target("c-" + s, s, "url", "Свои", url=url, about="Своя цель · HTTPS"))
     return out
 
 
@@ -125,7 +116,7 @@ def dpi_suite(fetch=None) -> list[dict]:
     fetch = fetch or (lambda u: updater.http_get(u, 10).decode("utf-8", "replace"))
     data = json.loads(fetch(DPI_SUITE_URL))
     return [_target("dpi-" + str(e["id"]), f"{e.get('provider', '')} {e.get('country', '')}".strip() or e["host"], "dpi",
-                    "Заморозка 16–20 КБ", host=e["host"]) for e in data]
+                    "Заморозка 16–20 КБ", host=e["host"], about=f"Набор hyperion-cs · {e['host']}") for e in data]
 
 
 # ---------- проверки ----------
@@ -178,7 +169,10 @@ def check_dpi(t: dict, payload: Path) -> dict:
 
 
 def _ping(host: str) -> int | None:
-    r = winutil.run(["ping", "-n", "1", "-w", "1000", host], timeout=5)
+    try:
+        r = winutil.run(["ping", "-n", "1", "-w", "1000", host], timeout=5)
+    except TimeoutError:
+        return None
     m = re.search(r"(?:time|время)[=<](\d+)", r.stdout)
     return int(m.group(1)) if r.returncode == 0 and m else None
 
@@ -212,6 +206,49 @@ def check_all(targets: list[dict], payload: Path) -> dict[str, dict]:
 
     with ThreadPoolExecutor(PARALLEL) as ex:
         return dict(ex.map(one, targets))
+
+
+# ---------- оценка ----------
+
+def grade(res: dict) -> dict:
+    """Оценка стратегий относительно базовой линии.
+
+    Для каждой цели «потолок» — лучший результат без запрета или с любой стратегией:
+      * потолок 0 — цель не отвечает вообще (мёртвый адрес или её не пробивает ничто) — не учитываем;
+      * без запрета уже на потолке — цель открыта, стратегия не должна её сломать;
+      * без запрета ниже потолка — цель заблокирована, стратегии её чинят.
+    Счёт стратегии — сумма долей от потолка по учитываемым целям. Так сервер без TLS 1.3
+    («наполовину» везде) не отнимает баллы ни у одной стратегии.
+    """
+    targets = res["targets"]
+    done = [r for r in res["rows"] if r["state"] == "done"]
+    meta = {}
+    for t in targets:
+        tid = t["id"]
+        base = res["baseline"].get(tid, {}).get("score", 0)
+        cap = max([base] + [r["results"].get(tid, {}).get("score", 0) for r in done])
+        meta[tid] = {"cap": cap, "status": "dead" if cap == 0 else "open" if base >= cap else "blocked"}
+    counted = [t["id"] for t in targets if meta[t["id"]]["status"] != "dead"]
+    n = len(counted)
+    for r in res["rows"]:
+        if r["state"] != "done":
+            r["grade"] = "failed"
+            continue
+        part = {tid: min(1.0, r["results"].get(tid, {}).get("score", 0) / meta[tid]["cap"]) for tid in counted}
+        r["score"] = round(sum(part.values()), 2)
+        r["of"] = n
+        r["fixed"] = sum(1 for tid in counted if meta[tid]["status"] == "blocked" and part[tid] >= 1)
+        r["broke"] = sum(1 for tid in counted if meta[tid]["status"] == "open" and part[tid] < 1)
+        # как у NetFix: идеальная — всё учитываемое проходит, частичная — хоть что-то
+        r["grade"] = "ideal" if n and r["score"] >= n - 1e-9 else "partial" if r["score"] > 0 else "broken"
+        r["avg_ms"] = round(r["ms"] / max(1, len(targets)))
+    res["meta"] = meta
+    res["counted"] = n
+    res["blocked"] = sum(1 for m in meta.values() if m["status"] == "blocked")
+    res["best"] = None
+    if done:
+        res["best"] = max(done, key=lambda r: (r["score"], -r["broke"], -r["avg_ms"]))["strategy"]
+    return res
 
 
 # ---------- последний результат (как кеш у NetFix: не пересканировать каждый раз) ----------
@@ -270,9 +307,7 @@ def run_scan(job: Job, zdir: Path, strategies: list[str], targets: list[dict]) -
                                                         for s in strategies], "best": None}
     job.result = res
 
-    was_service = zapret.service_state()
-    mode = zapret.ipset_mode(zdir)
-    job.say(f"Стратегий: {len(strategies)}, целей: {len(targets)}. Служба: {was_service or 'не установлена'}, IPSet: {mode}")
+    job.say(f"Стратегий: {len(strategies)}, целей: {len(targets)}")
 
     fd, payload_name = tempfile.mkstemp(prefix="pipo-dpi-", suffix=".bin")
     with os.fdopen(fd, "wb") as f:
@@ -281,61 +316,48 @@ def run_scan(job: Job, zdir: Path, strategies: list[str], targets: list[dict]) -
 
     proc = None
     try:
-        zapret.stop_all()
-        job.say("Прогон без запрета — что вообще заблокировано")
-        res["baseline"] = check_all(targets, payload)
-        blocked = sum(1 for r in res["baseline"].values() if r["score"] < 1)
-        job.say(f"Без запрета не проходит {blocked} из {len(targets)} целей")
+        with suspend.suspended(zdir, job.say, ipset="any") as was:
+            job.say(f"Служба: {was.service or 'не установлена'}, IPSet: {was.ipset} → временно «Все», чтобы стратегия трогала все цели")
+            job.say("Прогон без запрета — что вообще заблокировано")
+            res["baseline"] = check_all(targets, payload)
+            blocked = sum(1 for r in res["baseline"].values() if r["score"] < 1)
+            job.say(f"Без запрета не проходит {blocked} из {len(targets)} целей")
 
-        if mode != "any":
-            split.set_ipset_mode(zdir, "any")
-            job.say("IPSet временно в режиме «Все», чтобы стратегия трогала все цели")
+            for i, row in enumerate(res["rows"]):
+                if job.cancelled:
+                    job.say("Остановлено пользователем", "warn")
+                    break
+                job.progress = i / len(res["rows"])
+                row["state"] = "running"
+                try:
+                    proc = start_winws(zdir, row["strategy"])
+                    row["results"] = check_all(targets, payload)
+                    row["score"] = round(sum(r["score"] for r in row["results"].values()), 2)
+                    row["ms"] = sum(r["ms"] for r in row["results"].values())
+                    row["state"] = "done"
+                    job.say(f"{row['strategy']}: {row['score']:g} из {len(targets)}")
+                except (ScanError, zapret.StrategyError, OSError) as e:
+                    row["state"] = "failed"
+                    row["error"] = str(e)
+                    job.say(f"{row['strategy']}: {e}", "warn")
+                finally:
+                    stop_winws(proc)
+                    proc = None
 
-        for i, row in enumerate(res["rows"]):
-            if job.cancelled:
-                job.say("Остановлено пользователем", "warn")
-                break
-            job.progress = i / len(res["rows"])
-            row["state"] = "running"
-            try:
-                proc = start_winws(zdir, row["strategy"])
-                row["results"] = check_all(targets, payload)
-                row["score"] = round(sum(r["score"] for r in row["results"].values()), 2)
-                row["ms"] = sum(r["ms"] for r in row["results"].values())
-                row["state"] = "done"
-                job.say(f"{row['strategy']}: {row['score']:g} из {len(targets)}")
-            except (ScanError, zapret.StrategyError, OSError) as e:
-                row["state"] = "failed"
-                row["error"] = str(e)
-                job.say(f"{row['strategy']}: {e}", "warn")
-            finally:
-                stop_winws(proc)
-                proc = None
-
-        n = len(targets)
-        for r in res["rows"]:
-            # как у NetFix: идеальная — прошли все цели, частичная — хоть что-то
-            r["grade"] = "failed" if r["state"] != "done" else "ideal" if r["score"] >= n else "partial" if r["score"] > 0 else "broken"
-            if r["state"] == "done":
-                r["avg_ms"] = round(r["ms"] / max(1, n))
-        done = [r for r in res["rows"] if r["state"] == "done"]
-        if done:
-            best = max(done, key=lambda r: (r["score"], -r["avg_ms"]))
-            res["best"] = best["strategy"]
-            job.say(f"Лучшая: {best['strategy']} — {best['score']:g} из {n}, в среднем {best['avg_ms']} мс", "ok")
-        res["finished_at"] = time.time()
-        save_last(res)
-        job.progress = 1
-        return res
+            for row in res["rows"]:
+                if row["state"] == "pending":
+                    row["state"] = "skipped"  # остановили раньше — в сохранённом результате не «в очереди»
+            grade(res)
+            if res["best"]:
+                best = next(r for r in res["rows"] if r["strategy"] == res["best"])
+                job.say(f"Лучшая: {best['strategy']} — {best['score']:g} из {res['counted']}, в среднем {best['avg_ms']} мс", "ok")
+            dead = [t["name"] for t in targets if res["meta"][t["id"]]["status"] == "dead"]
+            if dead:
+                job.say("Не отвечают ни без запрета, ни с одной стратегией — в оценке не учтены: " + ", ".join(dead), "warn")
+            res["finished_at"] = time.time()
+            save_last(res)
+            job.progress = 1
+            return res
     finally:
         stop_winws(proc)
         payload.unlink(missing_ok=True)
-        if zapret.ipset_mode(zdir) != mode:
-            split.set_ipset_mode(zdir, mode)
-            job.say("Режим IPSet возвращён")
-        if was_service == "running":
-            try:
-                zapret.start_service()
-                job.say("Служба запрета снова запущена")
-            except zapret.ServiceError as e:
-                job.say(f"Не удалось вернуть службу: {e}", "error")

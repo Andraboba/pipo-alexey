@@ -22,7 +22,7 @@ export default function GeoForm() {
   return (
     <form className="card addrule" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
       <div className="geo-label"><b>GeoIP</b><span className="sub">страна целиком</span></div>
-      <input id="geo-cc" className="mono" list="countries" placeholder="RU" maxLength={2} value={cc}
+      <input id="geo-cc" aria-label="Код страны" className="mono" list="countries" placeholder="RU" maxLength={2} value={cc}
         onChange={(e) => setCc(e.target.value.toUpperCase())} />
       <datalist id="countries">
         {Object.entries(COUNTRIES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}

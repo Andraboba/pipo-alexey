@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useToast } from "./Toasts.jsx";
 
-/** Кнопка, которая сама показывает «занято» и превращает ошибку в тост. */
-export function Button({ onClick, kind = "", small, disabled, children, type = "button", ...rest }) {
+/** Кнопка, которая сама показывает «занято» и превращает ошибку в тост.
+ *  plain — без оформления .btn (ссылка, иконка): kind="link" / kind="icon-btn". */
+export function Button({ onClick, kind = "", small, plain, disabled, children, type = "button", ...rest }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
-  const cls = ["btn", kind, small && "small", busy && "busy"].filter(Boolean).join(" ");
+  const cls = [!plain && "btn", kind, small && "small", busy && "busy"].filter(Boolean).join(" ");
   const handle = async (e) => {
     if (!onClick) return;
     setBusy(true);

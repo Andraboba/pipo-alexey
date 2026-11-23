@@ -17,7 +17,9 @@ export async function api(method, path, body) {
   }
   if (!res.ok) {
     const d = data?.detail;
-    throw new Error((typeof d === "string" ? d : d && JSON.stringify(d)) || `HTTP ${res.status}`);
+    const err = new Error((typeof d === "string" ? d : d && JSON.stringify(d)) || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return data;
 }

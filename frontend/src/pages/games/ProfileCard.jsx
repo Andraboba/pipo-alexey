@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { del, patch } from "../../lib/api.js";
-import { domains, fmt, nets, ROUTE_LABEL } from "../../lib/format.js";
+import { domains, fmt, nets, plural, ROUTE_LABEL } from "../../lib/format.js";
 import { useStore } from "../../store.jsx";
 import { Button, Seg, useAction } from "../../ui/controls.jsx";
 import { useConfirm } from "../../ui/ConfirmDialog.jsx";
@@ -64,21 +64,21 @@ export default function ProfileCard({ p }) {
       <p className="explain">
         {EXPLAIN[p.route]}
         {p.route === "off" && p.covered_by_base > 0 && (
-          <> · <b className="t-zapret">{p.covered_by_base} из {p.total}</b> подсетей уже в общем IPSet{gfOn ? " и обрабатываются" : ""}</>
+          <> · <b className="t-zapret">{p.covered_by_base} из {p.total}</b> {plural(p.total, "подсети", "подсетей", "подсетей")} уже в общем IPSet{gfOn ? " и обрабатываются" : ""}</>
         )}
       </p>
       {form === null ? (
-        <button className="link" style={{ alignSelf: "flex-start" }} onClick={openForm}>Изменить</button>
+        <Button plain kind="link" style={{ alignSelf: "flex-start" }} onClick={openForm}>Изменить</Button>
       ) : (
         <div className="stack tight">
-          <div className="field"><label>Домены</label>
-            <textarea className="mono" rows={3} spellCheck={false} value={form.domains} onChange={(e) => setForm({ ...form, domains: e.target.value })} />
+          <div className="field"><label htmlFor={`p-${p.id}-domains`}>Домены</label>
+            <textarea id={`p-${p.id}-domains`} className="mono" rows={3} spellCheck={false} value={form.domains} onChange={(e) => setForm({ ...form, domains: e.target.value })} />
           </div>
-          <div className="field"><label>ASN</label>
-            <input className="mono" spellCheck={false} value={form.asns} onChange={(e) => setForm({ ...form, asns: e.target.value })} />
+          <div className="field"><label htmlFor={`p-${p.id}-asns`}>ASN</label>
+            <input id={`p-${p.id}-asns`} className="mono" spellCheck={false} value={form.asns} onChange={(e) => setForm({ ...form, asns: e.target.value })} />
           </div>
-          <div className="field"><label>Свои подсети · <code>lists/{p.file}</code></label>
-            <textarea className="mono" rows={6} spellCheck={false} value={form.networks} onChange={(e) => setForm({ ...form, networks: e.target.value })} />
+          <div className="field"><label htmlFor={`p-${p.id}-nets`}>Свои подсети · <code>lists/{p.file}</code></label>
+            <textarea id={`p-${p.id}-nets`} className="mono" rows={6} spellCheck={false} value={form.networks} onChange={(e) => setForm({ ...form, networks: e.target.value })} />
           </div>
           <div className="row">
             <Button small kind="solid" onClick={async () => {
@@ -86,8 +86,8 @@ export default function ProfileCard({ p }) {
               setForm(null);
               toast("Профиль сохранён");
             }}>Сохранить</Button>
-            <button className="btn small ghost" onClick={() => setForm(null)}>Отмена</button>
-            <button className="btn small ghost danger-text" onClick={remove}>Удалить профиль</button>
+            <Button small kind="ghost" onClick={() => setForm(null)}>Отмена</Button>
+            <Button small kind="ghost danger-text" onClick={remove}>Удалить профиль</Button>
           </div>
         </div>
       )}

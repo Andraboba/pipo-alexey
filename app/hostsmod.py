@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import locale
 import os
 import re
 import socket
+import threading
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -26,6 +28,8 @@ from .settings import DATA_DIR, write_text_atomic
 HOSTS = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "drivers" / "etc" / "hosts"
 BEGIN = "# >>> pipo: доступ к сервисам (управляется приложением, не редактируйте)"
 END = "# <<< pipo"
+ANSI = locale.getencoding()  # hosts нередко сохранён в кодовой странице Windows, а не в UTF-8
+_lock = threading.Lock()
 
 SOURCES = {
     "geohide": {
@@ -184,28 +188,63 @@ def cache_time(source: str) -> float | None:
 
 # ---------- hosts ----------
 
-def read_hosts() -> str:
+def _read_raw() -> bytes:
     try:
-        return HOSTS.read_bytes().decode("utf-8", "replace")
+        return HOSTS.read_bytes()
     except OSError as e:
         raise HostsError(f"не читается {HOSTS}: {e}") from e
 
 
-def split_block(text: str) -> tuple[str, list[str]]:
-    """(hosts без нашего блока, строки нашего блока)."""
-    lines = text.splitlines()
-    out, ours, inside = [], [], False
-    for l in lines:
-        if l.strip() == BEGIN:
-            inside = True
-            continue
-        if inside and l.strip() == END:
-            inside = False
-            continue
-        (ours if inside else out).append(l)
+def _decode(line: bytes) -> str:
+    try:
+        return line.decode("utf-8")
+    except UnicodeDecodeError:
+        return line.decode(ANSI, "replace")
+
+
+def split_block(raw: bytes, replacing: set[str] = frozenset()) -> tuple[list[bytes], list[str]]:
+    """(строки пользователя байт в байт, строки нашего блока).
+
+    Блок — только BEGIN…END. Если END кто-то стёр, хвост после BEGIN считается
+    строками пользователя: лишнее не удалим, а сам BEGIN выкинем и запишем блок заново.
+    Из такого хвоста выпадают только записи на домены из replacing — те, что мы пишем
+    заново: иначе старый IP выше нового блока перекрыл бы свежий (hosts берёт первое совпадение).
+    """
+    out: list[bytes] = []
+    ours: list[str] = []
+    pending: list[bytes] | None = None
+    for b in raw.splitlines():
+        s = _decode(b).strip()
+        if pending is None:
+            if s == BEGIN:
+                pending = []
+            else:
+                out.append(b)
+        elif s == END:
+            ours += [_decode(x) for x in pending]
+            pending = None
+        else:
+            pending.append(b)
+    if pending is not None:
+        out += [b for b in pending if _entry_domain(_decode(b)) not in replacing]
     while out and not out[-1].strip():
         out.pop()
-    return "\r\n".join(out), ours
+    return out, ours
+
+
+def _entry_domain(line: str) -> str | None:
+    """«1.2.3.4 example.com» → example.com; комментарии и прочее — None."""
+    parts = line.split("#", 1)[0].split()
+    return parts[1].lower() if len(parts) == 2 else None
+
+
+def _encoding_of(lines: list[bytes]) -> str:
+    """В какой кодировке писать наш блок: в той же, что у файла (кириллический маркер)."""
+    try:
+        b"\n".join(lines).decode("utf-8")
+        return "utf-8"
+    except UnicodeDecodeError:
+        return ANSI
 
 
 def render_block(entries: list[tuple[str, str]]) -> list[str]:
@@ -226,16 +265,21 @@ def _backup_original() -> None:
 
 
 def write_hosts(entries: list[tuple[str, str]]) -> int:
-    base, _ = split_block(read_hosts())
-    lines = render_block(entries)
-    text = base + ("\r\n\r\n" + "\r\n".join([BEGIN, *lines, END]) if lines else "") + "\r\n"
-    _backup_original()
-    try:
-        tmp = HOSTS.with_name("hosts.pipo-tmp")
-        tmp.write_bytes(text.encode("utf-8"))
-        os.replace(tmp, HOSTS)
-    except PermissionError as e:
-        raise HostsError("нет доступа к hosts — нужны права администратора, либо файл заблокирован антивирусом") from e
+    with _lock:
+        lines = render_block(entries)
+        base, _ = split_block(_read_raw(), replacing={l.split()[1].lower() for l in lines})
+        enc = _encoding_of(base)
+        block = "\r\n".join([BEGIN, *lines, END]).encode(enc, "replace")
+        data = b"\r\n".join(base) + (b"\r\n\r\n" + block if lines else b"") + b"\r\n"
+        _backup_original()
+        tmp = HOSTS.with_name(f"hosts.pipo-{os.getpid()}-{threading.get_ident()}.tmp")
+        try:
+            tmp.write_bytes(data)
+            os.replace(tmp, HOSTS)
+        except PermissionError as e:
+            raise HostsError("нет доступа к hosts — нужны права администратора, либо файл заблокирован антивирусом") from e
+        finally:
+            tmp.unlink(missing_ok=True)
     winutil.run(["ipconfig", "/flushdns"])
     return len(lines)
 
@@ -263,7 +307,7 @@ def status() -> dict:
     """Что сейчас реально в hosts. Если блок пропал — его откатил антивирус или кто-то вручную."""
     st = load_state()
     try:
-        _, ours = split_block(read_hosts())
+        _, ours = split_block(_read_raw())
         readable = True
     except HostsError:
         ours, readable = [], False
@@ -303,7 +347,7 @@ def overview() -> dict:
             "updated": cache_time(key),
             # в списках у домена бывает по 4 IP прокси; в hosts пишется один — считаем уникальные домены
             "sections": [{"name": s.name, "ai": s.ai, "count": len(dict.fromkeys(d for _, d in s.entries)),
-                          "domains": list(dict.fromkeys(d for _, d in s.entries))[:6], "ips": sorted({ip for ip, _ in s.entries})}
+                          "domains": list(dict.fromkeys(d for _, d in s.entries)), "ips": sorted({ip for ip, _ in s.entries})}
                          for s in sorted(secs, key=lambda s: (not s.ai, s.name.lower()))],
         }
     return out

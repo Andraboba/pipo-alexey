@@ -90,6 +90,30 @@ class HostsFileTests(unittest.TestCase):
         self.hosts.write_bytes(b"# user hosts\r\n")  # Защитник откатил
         self.assertTrue(hostsmod.status()["reverted"])
 
+    def test_missing_end_marker_keeps_user_lines(self):
+        # пользователь стёр END руками — всё ниже BEGIN всё равно его строки
+        self.hosts.write_bytes(("# user hosts\r\n" + hostsmod.BEGIN + "\r\n9.9.9.9 a.example\r\n127.0.0.1 mine.local\r\n").encode())
+        hostsmod.apply("geohide", ["A"])
+        text = self.hosts.read_text(encoding="utf-8")
+        self.assertIn("127.0.0.1 mine.local", text)
+        self.assertNotIn("9.9.9.9 a.example", text)  # наша старая запись из блока без END не перекрывает новую
+        self.assertIn("1.2.3.4 a.example", text)
+        self.assertEqual(text.count(hostsmod.BEGIN), 1)
+
+    def test_ansi_hosts_keeps_cyrillic(self):
+        original = "# мой комментарий\r\n127.0.0.1 my.local\r\n".encode("cp1251")
+        self.hosts.write_bytes(original)
+        with mock.patch.object(hostsmod, "ANSI", "cp1251"):
+            hostsmod.apply("geohide", ["A"])
+            self.assertEqual(hostsmod.status()["in_hosts"], 1)  # маркер в cp1251 тоже узнаём
+            hostsmod.apply("geohide", ["B"])  # и при повторной записи не дублируем блок
+            raw = self.hosts.read_bytes()
+            self.assertIn("# мой комментарий".encode("cp1251"), raw)
+            self.assertNotIn("�".encode("utf-8"), raw)
+            self.assertEqual(self.hosts.read_bytes().count("# >>> pipo".encode("cp1251")), 1)
+            hostsmod.remove()
+        self.assertEqual(self.hosts.read_bytes(), original)
+
 
 if __name__ == "__main__":
     unittest.main()

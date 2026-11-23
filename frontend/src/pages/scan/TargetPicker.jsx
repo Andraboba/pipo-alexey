@@ -16,7 +16,10 @@ export default function TargetPicker({ targets, picked, setPicked, disabled }) {
   return (
     <div className="card targets">
       <div className="card-title">Цели <span className="count">{picked.size}</span></div>
-      <p className="hint">Список Flowseal (utils\targets.txt) и ваши игровые профили — домены и адреса из их сетей</p>
+      <p className="hint">
+        Список Flowseal (utils\targets.txt) и ваши игры. У игр проверяются сайт, лаунчер и API — сам игровой
+        UDP-трафик так не проверить: если в матче лагает, а сайт открывается, это видно только в игре
+      </p>
       {groups.map((g) => {
         const ids = g.items.map((t) => t.id);
         const all = ids.every((id) => picked.has(id));

@@ -39,10 +39,30 @@ async def guard(request: Request, call_next):
         request.headers.get("x-pipo-token", ""), TOKEN
     ):
         return JSONResponse({"detail": "bad token — обновите страницу"}, status_code=403)
+    busy = _busy_with(request)
+    if busy:
+        return JSONResponse({"detail": f"Сейчас идёт {busy} — дождитесь окончания или остановите"}, status_code=409)
     resp: Response = await call_next(request)
     resp.headers["Cache-Control"] = "no-store"
     resp.headers["X-Frame-Options"] = "DENY"
     return resp
+
+
+JOB_NAMES = {
+    "scan": "подбор стратегии", "zapret": "обновление zapret", "tg": "обновление TG WS Proxy",
+    "ipset": "обновление IPSet", "asn": "обновление подсетей по ASN", "recover": "возврат запрета после прошлого запуска",
+}
+
+
+def _busy_with(request: Request) -> str | None:
+    """Пока задача держит запрет на паузе, любые изменения ломают её результат или её возврат «как было».
+
+    Читать можно, остановить задачу можно; всё остальное — 409. Одно правило вместо проверки в каждом обработчике."""
+    path = request.url.path
+    if request.method in ("GET", "HEAD") or not path.startswith("/api/") or path.startswith("/api/jobs/"):
+        return None
+    job = jobs.current()
+    return JOB_NAMES.get(job.kind, "другая операция") if job else None
 
 
 def zdir() -> Path:
@@ -297,27 +317,33 @@ def _tg_exe() -> Path:
 @app.post("/api/tg/{action}")
 def tg_action(action: str):
     exe = _tg_exe()
-    if action == "start":
-        tgproxy.start(exe)
-        for _ in range(16):
-            if tgproxy.running(exe):
-                break
-            time.sleep(0.25)
-    elif action == "stop":
-        tgproxy.stop(exe)
-    elif action == "open-link":
-        link = tgproxy.status()["link"]
-        if not link:
-            raise HTTPException(400, "в конфиге TG WS Proxy нет secret — запустите прокси хотя бы раз")
-        winutil.open_url_unelevated(link)
-    else:
-        raise HTTPException(404)
+    try:
+        if action == "start":
+            tgproxy.start(exe)
+            for _ in range(16):
+                if tgproxy.running(exe):
+                    break
+                time.sleep(0.25)
+        elif action == "stop":
+            tgproxy.stop(exe)
+        elif action == "open-link":
+            link = tgproxy.status()["link"]
+            if not link:
+                raise HTTPException(400, "в конфиге TG WS Proxy нет secret — запустите прокси хотя бы раз")
+            winutil.open_url_unelevated(link)
+        else:
+            raise HTTPException(404)
+    except ERRORS as e:  # Popen/реестр: файл занят, нет прав
+        fail(e)
     return tgproxy.status()
 
 
 @app.put("/api/tg/autostart")
 def tg_autostart(enabled: bool = Body(..., embed=True)):
-    tgproxy.set_autostart(_tg_exe(), enabled)
+    try:
+        tgproxy.set_autostart(_tg_exe(), enabled)
+    except ERRORS as e:
+        fail(e)
     return tgproxy.status()
 
 
@@ -451,6 +477,10 @@ def settings_get():
 
 @app.put("/api/settings")
 def settings_put(patch: dict = Body(...)):
+    if "zapret_dir" in patch and not (isinstance(patch["zapret_dir"], str) and patch["zapret_dir"].strip()):
+        raise HTTPException(400, "укажите папку запрета")
+    if "tg_exe" in patch and patch["tg_exe"] is not None and not isinstance(patch["tg_exe"], str):
+        raise HTTPException(400, "tg_exe: нужен путь строкой")
     if "zapret_dir" in patch and not (Path(patch["zapret_dir"]) / "service.bat").is_file():
         raise HTTPException(400, "в этой папке нет service.bat")
     if patch.get("tg_exe") and not Path(patch["tg_exe"]).is_file():

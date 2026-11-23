@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { post, put } from "../../lib/api.js";
 import { zapretView } from "../../lib/status.js";
-import { useStore } from "../../store.jsx";
+import { go, useStore } from "../../store.jsx";
 import { Button, Lamp, Switch, useAction } from "../../ui/controls.jsx";
 import { useConfirm } from "../../ui/ConfirmDialog.jsx";
 import { useToast } from "../../ui/Toasts.jsx";
@@ -78,11 +78,12 @@ export default function EngineCard() {
               {z.strategies.map((s) => <option key={s}>{s}</option>)}
             </select>
             <Button onClick={install}>{installed ? "Сменить стратегию" : "Установить службу"}</Button>
+            <Button onClick={() => go("scan")}>Подбор</Button>
           </div>
-          <p className="hint">Если сайт не открывается, попробуйте ALT или FAKE TLS</p>
+          <p className="hint">Не знаете, какую выбрать, или сайт не открывается — «Подбор» проверит все стратегии на нужных сайтах</p>
         </div>
         <div className="field">
-          <label>Автозапуск запрета</label>
+          <div className="field-label">Автозапуск запрета</div>
           <Switch checked={z.autostart} disabled={!installed} onChange={autostart}>
             {!installed ? "Служба не установлена" : z.autostart ? "Включён" : "Выключен"}
           </Switch>
@@ -92,7 +93,7 @@ export default function EngineCard() {
 
       <div className="engine-foot">
         <span className="mono">zapret {z.version || "?"} · {z.dir}</span>
-        {installed && <button className="link danger" onClick={remove}>Удалить службу</button>}
+        {installed && <Button plain kind="link danger" onClick={remove}>Удалить службу</Button>}
       </div>
     </div>
   );

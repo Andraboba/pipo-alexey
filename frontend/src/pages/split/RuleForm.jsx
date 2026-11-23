@@ -26,10 +26,10 @@ export default function RuleForm({ onCheck }) {
 
   return (
     <form className="card addrule" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
-      <input className="mono grow" value={value} onChange={(e) => setValue(e.target.value)} spellCheck={false}
+      <input className="mono grow" aria-label="Домен, ссылка или IP" value={value} onChange={(e) => setValue(e.target.value)} spellCheck={false}
         placeholder="example.com, https://site.ru/page или 1.2.3.0/24" />
       <Seg options={ROUTES} value={route} onChange={setRoute} />
-      <input className="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Заметка" />
+      <input className="note" aria-label="Заметка к правилу" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Заметка" />
       <Button kind="solid" type="submit" disabled={!value.trim()} onClick={add}>Добавить</Button>
       <Button onClick={async () => onCheck(await checkHost(value))}>Проверить доступ</Button>
     </form>

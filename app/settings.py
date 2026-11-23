@@ -55,7 +55,10 @@ def zapret_dir() -> Path:
 def write_text_atomic(path: Path, text: str) -> None:
     """UTF-8 без BOM, LF. Пишем во временный файл и подменяем — без полуфайлов."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".pipo-tmp")
-    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
-        f.write(text)
-    os.replace(tmp, path)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}-{threading.get_ident()}.pipo-tmp")  # свой у каждого потока
+    try:
+        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)

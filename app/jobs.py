@@ -1,6 +1,7 @@
-"""Фоновые задачи (обновления) с логом, который UI опрашивает."""
+"""Фоновые задачи (подбор, обновления) с логом, который UI опрашивает."""
 from __future__ import annotations
 
+import copy
 import threading
 import time
 import traceback
@@ -23,8 +24,15 @@ class Job:
         self.log.append({"t": time.time(), "level": level, "text": text})
 
     def to_dict(self) -> dict:
-        return {"id": self.id, "kind": self.kind, "state": self.state, "log": self.log,
-                "progress": self.progress, "result": self.result, "cancelled": self.cancelled}
+        """Снимок для API. Поток задачи в это время дописывает log и result — отдаём копию, а не живые объекты."""
+        for _ in range(10):
+            try:
+                return copy.deepcopy({"id": self.id, "kind": self.kind, "state": self.state, "log": self.log,
+                                      "progress": self.progress, "result": self.result, "cancelled": self.cancelled})
+            except RuntimeError:  # «dictionary changed size during iteration» — задача как раз что-то дописала
+                time.sleep(0.01)
+        return {"id": self.id, "kind": self.kind, "state": self.state, "log": list(self.log),
+                "progress": self.progress, "result": None, "cancelled": self.cancelled}
 
 
 _jobs: dict[str, Job] = {}
@@ -62,5 +70,17 @@ def get(job_id: str) -> Job | None:
 
 
 def current() -> Job | None:
-    running = [j for j in _jobs.values() if j.state == "running"]
+    running = [j for j in list(_jobs.values()) if j.state == "running"]
     return running[-1] if running else None
+
+
+def shutdown(timeout: float) -> bool:
+    """Выход из приложения: попросить задачу остановиться и дождаться, пока она вернёт всё как было."""
+    job = current()
+    if not job:
+        return True
+    job.cancelled = True
+    end = time.monotonic() + timeout
+    while job.state == "running" and time.monotonic() < end:
+        time.sleep(0.2)
+    return job.state != "running"

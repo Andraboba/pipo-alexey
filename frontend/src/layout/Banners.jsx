@@ -22,7 +22,7 @@ export default function Banners() {
             setRestartNeeded(false);
             toast("Запрет перезапущен");
           }}>Перезапустить запрет</Button>
-          <button className="btn small ghost" onClick={() => setRestartNeeded(false)}>Позже</button>
+          <Button small kind="ghost" onClick={() => setRestartNeeded(false)}>Позже</Button>
         </div>
       )}
     </>

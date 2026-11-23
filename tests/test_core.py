@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
-from app import split, updater, zapret
+from app import split, suspend, updater, winutil, zapret
 from app import settings as app_settings
 
 BAT = r'''@echo off
@@ -56,7 +56,7 @@ class TempCase(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="pipo-test-"))
         self.z = make_zapret(self.tmp)
         self.data = self.tmp / "data"
-        self.patches = [mock.patch.object(m, "DATA_DIR", self.data) for m in (split, updater, app_settings)]
+        self.patches = [mock.patch.object(m, "DATA_DIR", self.data) for m in (split, suspend, updater, app_settings)]
         for p in self.patches:
             p.start()
 
@@ -70,6 +70,11 @@ class TempCase(unittest.TestCase):
 
 
 class StrategyTests(TempCase):
+    def test_strategy_outside_zapret_dir_refused(self):
+        (self.tmp / "evil.bat").write_text(BAT, encoding="utf-8")  # рядом с папкой запрета, но не в ней
+        with self.assertRaises(zapret.StrategyError):
+            zapret.build_args(self.z, "../evil", zapret.GameFilter("all", "1024-65535", "1024-65535"))
+
     def test_args_substitution(self):
         gf = zapret.GameFilter("udp", "1024-65535", "50000-60000")
         args = zapret.build_args(self.z, "general", gf)
@@ -133,6 +138,34 @@ class SplitTests(TempCase):
         # база взята из .pre-iracing, т.к. pre ∪ iracing == текущий ipset-all
         self.assertNotIn("3.2.66.0/23", split.read_list(split.base_file()))
         self.assertEqual([r["value"] for r in snap["rules"]], ["my-blocked.org"])
+
+    def test_corrupt_state_is_kept_aside(self):
+        split.add_rule(self.z, "keep-me.org", "zapret")
+        sf = split._state_file()
+        sf.write_text(sf.read_text(encoding="utf-8")[:-20], encoding="utf-8")  # обрезанный JSON
+        broken = sf.read_bytes()
+        split.load(self.z)
+        aside = list(sf.parent.glob(sf.name + ".corrupt-*"))
+        self.assertEqual(len(aside), 1)
+        self.assertEqual(aside[0].read_bytes(), broken)  # правила можно достать руками
+
+    def test_unreadable_state_is_not_overwritten(self):
+        split.add_rule(self.z, "keep-me.org", "zapret")
+        sf = split._state_file()
+        before = sf.read_bytes()
+        with mock.patch.object(Path, "read_text", side_effect=PermissionError("занят антивирусом")):
+            with self.assertRaises(OSError):
+                split.load(self.z)
+        self.assertEqual(sf.read_bytes(), before)
+
+    def test_unknown_fields_in_state_ignored(self):
+        split.add_rule(self.z, "keep-me.org", "zapret")
+        sf = split._state_file()
+        raw = json.loads(sf.read_text(encoding="utf-8"))
+        raw["future"] = 1
+        raw["rules"][-1]["future_field"] = True
+        sf.write_text(json.dumps(raw), encoding="utf-8")
+        self.assertIn("keep-me.org", [r.value for r in split.load(self.z).rules])
 
     def test_coverage_counts_supernets(self):
         pool = ["10.0.0.0/8", "192.168.1.0/24", "2a05::/16"]
@@ -223,6 +256,14 @@ class SplitTests(TempCase):
         split.set_ipset_mode(self.z, "loaded")
         self.assertIn("198.51.100.0/24", self.lines("ipset-all.txt"))
 
+    def test_external_ipset_update_survives_mode_switch(self):
+        # обновили IPSet через service.bat, потом подбор переключил режим в «Все» и обратно
+        split.apply(self.z)
+        (self.z / "lists" / "ipset-all.txt").write_text("100.0.0.0/8\n", encoding="utf-8")
+        split.set_ipset_mode(self.z, "any")
+        split.set_ipset_mode(self.z, "loaded")
+        self.assertIn("100.0.0.0/8", self.lines("ipset-all.txt"))
+
     def test_external_ipset_update_becomes_base(self):
         split.apply(self.z)
         (self.z / "lists" / "ipset-all.txt").write_text("100.0.0.0/8\n", encoding="utf-8")  # service.bat «Update IPSet»
@@ -248,6 +289,14 @@ class SplitTests(TempCase):
 
 
 class UpdaterTests(TempCase):
+    def test_failed_zapret_update_brings_service_back(self):
+        rel = {"version": "9.9", "assets": [{"name": "z.zip", "url": "u", "sha256": None}]}
+        job = updater.Job("update")
+        with mock.patch.object(updater, "_cached_release", return_value=rel),              mock.patch.object(updater, "download", return_value=self.tmp / "z.zip"),              mock.patch.object(updater, "safe_extract", return_value=self.tmp / "zapret-9.9" / "root"),              mock.patch.object(updater, "plan_files", return_value=([], [])),              mock.patch.object(updater, "install_files", side_effect=OSError("файл занят")),              mock.patch.object(zapret, "service_state", return_value="running"),              mock.patch.object(zapret, "installed_strategy", return_value="general"),              mock.patch.object(zapret, "stop_all"),              mock.patch.object(winutil, "process_running", return_value=False),              mock.patch.object(zapret, "start_service") as start:
+            with self.assertRaises(OSError):
+                updater.update_zapret(job, self.z, None)
+        start.assert_called_once()  # запрет не остался выключенным
+
     def test_versions(self):
         self.assertTrue(updater.is_newer("1.10.5", "1.10.4"))
         self.assertTrue(updater.is_newer("v1.12.0", "v1.11.4"))
@@ -334,9 +383,9 @@ class UpdaterTests(TempCase):
 
 
 class ApiGuardTests(unittest.TestCase):
-    def call(self, path, headers):
+    def call(self, path, headers, method="GET"):
         from app.api import app
-        scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "GET",
+        scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": method,
                  "scheme": "http", "path": path, "raw_path": path.encode(), "query_string": b"",
                  "root_path": "", "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
                  "client": ("127.0.0.1", 5000), "server": ("127.0.0.1", 47800)}
@@ -364,6 +413,18 @@ class ApiGuardTests(unittest.TestCase):
         status, body = self.call("/", {"host": "localhost:47800"})
         self.assertEqual(status, 200)
         self.assertIn(TOKEN.encode(), body)
+
+    def test_changes_refused_while_job_runs(self):
+        from app import jobs
+        from app.api import TOKEN
+        h = {"host": "127.0.0.1:47800", "x-pipo-token": TOKEN}
+        job = jobs.Job("scan")
+        with mock.patch.object(jobs, "current", return_value=job):
+            status, body = self.call("/api/zapret/start", h, "POST")
+            self.assertEqual(status, 409)
+            self.assertIn("подбор", json.loads(body)["detail"])
+            self.assertEqual(self.call("/api/settings", h)[0], 200)  # читать можно
+            self.assertNotEqual(self.call(f"/api/jobs/{job.id}/cancel", h, "POST")[0], 409)  # остановить — тоже
 
 
 if __name__ == "__main__":

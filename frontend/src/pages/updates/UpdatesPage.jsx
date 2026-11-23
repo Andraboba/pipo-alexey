@@ -10,11 +10,10 @@ import { confirmText } from "./confirmText.jsx";
 import "../../styles/updates.css";
 
 export default function UpdatesPage() {
-  const { status, split, updates, checkUpdates, job, watchJob } = useStore();
+  const { status, split, updates, checkUpdates, job, watchJob, busy } = useStore();
   const confirm = useConfirm();
   useEffect(() => { if (!updates) checkUpdates(false).catch(() => {}); }, [updates, checkUpdates]);
 
-  const running = job?.state === "running";
   const run = async (target) => {
     let u = updates;
     if (!u) { await checkUpdates(true); return; }
@@ -36,8 +35,8 @@ export default function UpdatesPage() {
         </p>
       )}
       <div className="grid2">
-        <UpdateCard title="Запрет" repo="Flowseal/zapret-discord-youtube" d={updates?.zapret} action="Обновить запрет" disabled={running} onRun={() => run("zapret")} />
-        <UpdateCard title="TG WS Proxy" repo="Flowseal/tg-ws-proxy" d={updates?.tg} tg action="Обновить TG WS Proxy" disabled={running} onRun={() => run("tg")} />
+        <UpdateCard title="Запрет" repo="Flowseal/zapret-discord-youtube" d={updates?.zapret} action="Обновить запрет" disabled={busy} onRun={() => run("zapret")} />
+        <UpdateCard title="TG WS Proxy" repo="Flowseal/tg-ws-proxy" d={updates?.tg} tg action="Обновить TG WS Proxy" disabled={busy} onRun={() => run("tg")} />
       </div>
       <div className="card">
         <div className="card-title">
@@ -45,7 +44,7 @@ export default function UpdatesPage() {
           {split?.base_size > 0 && <span className="sub"><span className="num">{fmt(split.base_size)}</span> {nets(split.base_size)} в базе Flowseal</span>}
         </div>
         <p className="hint">Базовый IPSet Flowseal, диапазоны стран из GeoIP-правил и подсети игр по ASN. Ваши правила накладываются поверх</p>
-        <Button disabled={running} onClick={() => run("ipset")}>Обновить списки</Button>
+        <Button disabled={busy} onClick={() => run("ipset")}>Обновить списки</Button>
       </div>
       {job && <JobConsole job={job} />}
     </section>

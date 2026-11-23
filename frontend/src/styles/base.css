@@ -33,7 +33,7 @@ a { color: inherit; }
 .stack.tight { gap: 12px; }
 .grow { flex: 1; min-width: 0; }
 .section-gap { margin-top: 16px; }
-.field label:not(.switch) { display: block; font-size: 12px; line-height: 16px; color: var(--faint); margin-bottom: 8px; }
+.field label:not(.switch), .field .field-label { display: block; font-size: 12px; line-height: 16px; color: var(--faint); margin-bottom: 8px; }
 
 .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 12px 0 0; font-size: 13px; }
 .kv dt { color: var(--text); }

@@ -21,15 +21,15 @@ export default function CustomGameForm() {
           <input id="pf-name" value={f.name} onChange={set("name")} placeholder="Например, Le Mans Ultimate" />
         </div>
         <div className="grid2 tight">
-          <div className="field"><label>Домены, по одному в строке</label>
-            <textarea className="mono" rows={4} spellCheck={false} value={f.domains} onChange={set("domains")} placeholder="example-game.com" />
+          <div className="field"><label htmlFor="pf-domains">Домены, по одному в строке</label>
+            <textarea id="pf-domains" className="mono" rows={4} spellCheck={false} value={f.domains} onChange={set("domains")} placeholder="example-game.com" />
           </div>
-          <div className="field"><label>ASN через пробел</label>
-            <input className="mono" spellCheck={false} value={f.asns} onChange={set("asns")} placeholder="AS49544 AS199524" />
+          <div className="field"><label htmlFor="pf-asns">ASN через пробел</label>
+            <input id="pf-asns" className="mono" spellCheck={false} value={f.asns} onChange={set("asns")} placeholder="AS49544 AS199524" />
           </div>
         </div>
-        <div className="field"><label>Подсети, по одной в строке</label>
-          <textarea className="mono" rows={5} spellCheck={false} value={f.networks} onChange={set("networks")} placeholder={"185.38.120.0/24\n2a05:d014::/32"} />
+        <div className="field"><label htmlFor="pf-networks">Подсети, по одной в строке</label>
+          <textarea id="pf-networks" className="mono" rows={5} spellCheck={false} value={f.networks} onChange={set("networks")} placeholder={"185.38.120.0/24\n2a05:d014::/32"} />
         </div>
         <Button kind="solid" type="submit" disabled={!f.name.trim()} onClick={async () => {
           setSplit(await post("/api/split/profiles", { ...f, route: "zapret" }));

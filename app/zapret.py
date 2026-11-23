@@ -203,6 +203,8 @@ def _split_args(s: str) -> list[str]:
 
 
 def build_args(zdir: Path, strategy: str, gf: GameFilter) -> list[str]:
+    if strategy not in list_strategies(zdir):  # только .bat из папки запрета: «..\x» в реестр службы не попадёт
+        raise StrategyError(f"нет стратегии «{strategy}» в {zdir}")
     bat = zdir / f"{strategy}.bat"
     try:
         text = bat.read_text(encoding="utf-8", errors="replace")

@@ -40,13 +40,13 @@ export default function TelegramPage() {
         </div>
         <div className="grid2">
           <div className="field">
-            <label>Подключение Telegram Desktop</label>
+            <div className="field-label">Подключение Telegram Desktop</div>
             <div className="linkbox"><code>{tg.link || "— secret появится после первого запуска прокси"}</code></div>
             <div className="row">
               <Button disabled={!tg.link} onClick={async () => { await post("/api/tg/open-link"); toast("Ссылка отправлена в Telegram Desktop"); }}>
                 Открыть в Telegram
               </Button>
-              <button className="btn ghost" disabled={!tg.link} onClick={copy}>Скопировать ссылку</button>
+              <Button kind="ghost" disabled={!tg.link} onClick={copy}>Скопировать ссылку</Button>
             </div>
             <p className="hint">
               Вручную: Настройки → Продвинутые → Тип подключения → MTProto, сервер <span className="mono">{tg.host}:{tg.port}</span>.
@@ -54,7 +54,7 @@ export default function TelegramPage() {
             </p>
           </div>
           <div className="field">
-            <label>Автозапуск TG WS Proxy</label>
+            <div className="field-label">Автозапуск TG WS Proxy</div>
             <Switch checked={tg.autostart} disabled={!tg.installed} onChange={(on) => act(async () => {
               setTg(await put("/api/tg/autostart", { enabled: on }));
               toast(on ? "Автозапуск TG WS Proxy включён" : "Автозапуск TG WS Proxy выключен");

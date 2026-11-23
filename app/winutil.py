@@ -12,15 +12,19 @@ CREATE_NO_WINDOW = 0x08000000
 
 
 def run(args: list[str], timeout: float = 30) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        args,
-        capture_output=True,
-        timeout=timeout,
-        creationflags=CREATE_NO_WINDOW if sys.platform == "win32" else 0,
-        # системные утилиты пишут в OEM-кодировке консоли
-        encoding="oem" if sys.platform == "win32" else "utf-8",
-        errors="replace",
-    )
+    """Зависшая утилита — TimeoutError (это OSError): его уже ловят API и подбор, а TimeoutExpired — никто."""
+    try:
+        return subprocess.run(
+            args,
+            capture_output=True,
+            timeout=timeout,
+            creationflags=CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            # системные утилиты пишут в OEM-кодировке консоли
+            encoding="oem" if sys.platform == "win32" else "utf-8",
+            errors="replace",
+        )
+    except subprocess.TimeoutExpired as e:
+        raise TimeoutError(f"{Path(args[0]).name} не ответил за {timeout:g} с") from e
 
 
 def is_admin() -> bool:

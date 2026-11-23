@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { del, patch } from "../../lib/api.js";
-import { COUNTRIES, fmt } from "../../lib/format.js";
+import { COUNTRIES, fmt, nets } from "../../lib/format.js";
 import { useStore } from "../../store.jsx";
 import { Seg, useAction } from "../../ui/controls.jsx";
 import { IconCheck, IconPause, IconPlay, IconTrash } from "../../ui/icons.jsx";
@@ -13,10 +13,10 @@ const FILTERS = [{ v: "all", label: "Все" }, ...ROUTES];
 function meta(r) {
   if (r.kind === "ip") return "IP";
   if (r.kind === "domain") return "домен";
-  const n = fmt(r.size);
+  const n = `${fmt(r.size)} ${nets(r.size)}`;
   return r.route === "direct" && r.kept_blocked
-    ? `${n} подсетей · ${r.kept_blocked} заблокированных из списка Flowseal остаются через запрет`
-    : `${n} подсетей`;
+    ? `${n} · ${r.kept_blocked} заблокированных из списка Flowseal остаются через запрет`
+    : n;
 }
 
 function Rule({ r, onCheck }) {

@@ -1,0 +1,17 @@
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+.upd .versions { display: flex; gap: 32px; margin: 12px 0; }
+.upd .versions span { display: block; color: var(--faint); font-size: 12px; }
+.upd .versions b { font-family: var(--mono); font-size: 20px; line-height: 28px; font-weight: 400; }
+.upd.newer .latest { text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 6px; }
+.upd-msg { color: var(--muted); font-size: 13px; min-height: 20px; margin: 0 0 12px; }
+
+.console pre { margin: 0; max-height: 320px; overflow: auto; font-size: 12px; line-height: 20px; white-space: pre-wrap; }
+.console .l-error { color: var(--red); }
+.console .l-warn { color: var(--amber); }
+.console .l-ok { color: var(--green); }
+.console .l-debug { color: var(--faint); }
+.progress { width: 180px; height: 4px; border-radius: 2px; background: var(--raised); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: var(--text); transition: width .2s var(--ease); }
+.progress.indet i { width: 30%; animation: indet 1.1s var(--ease) infinite; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(340%); } }

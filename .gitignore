@@ -1,0 +1,11 @@
+.venv/
+.idea/
+__pycache__/
+frontend/node_modules/
+# сборка фронта (собирается build_exe.bat / start.bat)
+web/dist/
+# артефакты PyInstaller
+build/
+dist/
+# состояние сплита, кеши GeoIP/ASN, бэкапы и скачанные релизы
+data/

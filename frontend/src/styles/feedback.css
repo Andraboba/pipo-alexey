@@ -1,0 +1,22 @@
+/* диалог подтверждения и тосты */
+dialog {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line-2); border-radius: 16px;
+  padding: 24px; width: min(520px, calc(100vw - 32px)); box-shadow: 0 16px 48px rgba(0, 0, 0, .4);
+}
+dialog[open] { animation: rise .24s var(--ease); }
+dialog::backdrop { background: rgba(0, 0, 0, .55); }
+dialog h3 { font-size: 16px; margin-bottom: 8px; }
+.confirm-body { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+.confirm-body ul { padding-left: 20px; margin: 8px 0; }
+.confirm-body p { margin: 0 0 8px; }
+.confirm-body b { color: var(--text); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+
+.toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: calc(100vw - 32px); }
+.toast {
+  display: flex; gap: 12px; align-items: center; max-width: 420px; padding: 12px 16px;
+  background: var(--raised); border: 1px solid var(--line-2); border-radius: 10px;
+  font-size: 13px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); animation: rise .2s var(--ease);
+}
+.toast::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex: none; }
+.toast.err::before { background: var(--red); }

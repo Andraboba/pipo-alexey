@@ -1,0 +1,37 @@
+.tg-mini { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+
+/* схема маршрутов — единственное цветное место пульта */
+.routes { padding: 0; overflow: hidden; }
+.routes-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 20px 20px 0; flex-wrap: wrap; }
+.routes-head .card-title { margin: 0; }
+.routes-head .mono { color: var(--text); }
+.routes-bar { display: flex; height: 8px; margin: 16px 20px 0; border-radius: 4px; overflow: hidden; background: var(--raised); gap: 2px; }
+.routes-bar i { display: block; min-width: 4px; }
+.routes-bar .z { background: var(--amber); }
+.routes-bar .z2 { background: color-mix(in srgb, var(--amber) 55%, var(--panel)); }
+.routes-bar .d { background: var(--teal); }
+
+.lanes { display: grid; grid-template-columns: 1fr 1fr; margin-top: 16px; border-top: 1px solid var(--line); }
+.lane { padding: 16px 20px 20px; position: relative; }
+.lane + .lane { border-left: 1px solid var(--line); }
+.lane::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 20px; width: 2px; border-radius: 1px; background: var(--c); }
+.lane.zapret { --c: var(--amber); }
+.lane.direct { --c: var(--teal); }
+.lane-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.lane-title b { color: var(--c); }
+.lane-total { font-size: 13px; color: var(--muted); }
+.lane-total .mono { color: var(--text); }
+.flow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); }
+.flow:first-of-type { border-top: 0; }
+.flow .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow .what span { color: var(--faint); margin-left: 8px; font-size: 13px; }
+.flow .n { font-size: 13px; color: var(--muted); text-align: right; }
+.flow .n .mono { color: var(--text); }
+.flow .meter { grid-column: 1 / -1; height: 2px; background: var(--raised); border-radius: 1px; overflow: hidden; }
+.flow .meter i { display: block; height: 100%; background: var(--c); opacity: .7; }
+.lane .none { color: var(--faint); font-size: 13px; padding: 8px 0; }
+
+@media (max-width: 860px) {
+  .lanes { grid-template-columns: 1fr; }
+  .lane + .lane { border-left: 0; border-top: 1px solid var(--line); }
+}

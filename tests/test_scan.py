@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from app import scan, split, zapret
+from app.jobs import Job
+from tests.test_core import TempCase
+
+
+class ParseTests(unittest.TestCase):
+    def test_custom_targets(self):
+        got = [(t["kind"], t.get("host") or t.get("url"), t.get("port")) for t in scan.parse_custom(
+            "# комментарий\n1.1.1.1\n8.8.8.8:53\n[2a03:2880::1]:8443\n2a03:2880::1\nexample.com\nhttps://x.org/a\n")]
+        self.assertEqual(got, [
+            ("ip", "1.1.1.1", 443), ("ip", "8.8.8.8", 53), ("ip", "2a03:2880::1", 8443), ("ip", "2a03:2880::1", 443),
+            ("url", "https://example.com", None), ("url", "https://x.org/a", None),
+        ])
+
+    def test_sample_hosts(self):
+        self.assertEqual(scan.sample_hosts(["2a00::/16", "10.0.0.0/24", "10.1.0.5/32", "10.2.0.0/24", "10.3.0.0/24"]),
+                         ["10.0.0.1", "10.1.0.5", "10.2.0.1"])
+
+    def test_dpi_freeze_detection(self):
+        t = {"host": "x"}
+        with mock.patch.object(scan, "_run_curl", return_value=(28, f"000 65536 0 {scan.DPI_TIMEOUT}.01", "")):
+            self.assertEqual(scan.check_dpi(t, Path("p"))["score"], 0)
+        with mock.patch.object(scan, "_run_curl", return_value=(0, "200 65536 4096 0.4", "")):
+            self.assertEqual(scan.check_dpi(t, Path("p"))["score"], 1)
+
+    def test_url_cert_substitution_is_failure(self):
+        with mock.patch.object(scan, "_run_curl", return_value=(60, "", "SSL certificate problem: self-signed")):
+            r = scan.check_url({"url": "https://x"})
+        self.assertEqual(r["score"], 0)
+        self.assertIn("подмена", r["detail"])
+
+
+class RunScanTests(TempCase):
+    def run_with(self, check_results, start_fail=()):
+        targets = [{"id": "a", "name": "a", "kind": "url", "url": "https://a"}, {"id": "b", "name": "b", "kind": "url", "url": "https://b"}]
+        calls = iter(check_results)
+        job = Job("scan")
+
+        def fake_check(*_):
+            v = next(calls)
+            if isinstance(v, Exception):
+                raise v
+            return v
+
+        def fake_start(zdir, strategy):
+            if strategy in start_fail:
+                raise scan.ScanError("winws завершился с кодом 1")
+            return None
+
+        with mock.patch.object(scan.CURL.__class__, "exists", return_value=True), \
+             mock.patch.object(scan, "check_all", side_effect=fake_check), \
+             mock.patch.object(scan, "start_winws", side_effect=fake_start), \
+             mock.patch.object(scan, "stop_winws"), \
+             mock.patch.object(zapret, "stop_all"), \
+             mock.patch.object(zapret, "service_state", return_value="running"), \
+             mock.patch.object(zapret, "start_service") as start_service:
+            res = scan.run_scan(job, self.z, ["general", "general (ALT)"], targets)
+        return res, job, start_service
+
+    def test_ranks_and_restores(self):
+        ok = {"score": 1, "detail": "", "ms": 100}
+        bad = {"score": 0, "detail": "", "ms": 4000}
+        res, job, start_service = self.run_with([
+            {"a": bad, "b": ok},   # без запрета
+            {"a": ok, "b": bad},   # general
+            {"a": ok, "b": ok},    # ALT
+        ])
+        self.assertEqual(res["best"], "general (ALT)")
+        self.assertEqual({r["strategy"]: r["grade"] for r in res["rows"]}, {"general": "partial", "general (ALT)": "ideal"})
+        self.assertEqual(zapret.ipset_mode(self.z), "loaded")  # IPSet вернулся
+        start_service.assert_called_once()  # служба работала до подбора — запущена снова
+        self.assertEqual(scan.load_last()["best"], "general (ALT)")
+
+    def test_broken_strategy_and_restore_on_error(self):
+        ok = {"score": 1, "detail": "", "ms": 100}
+        res, _, start_service = self.run_with([{"a": ok, "b": ok}, {"a": ok, "b": ok}], start_fail=("general",))
+        self.assertEqual(res["rows"][0]["state"], "failed")
+        self.assertEqual(res["best"], "general (ALT)")
+        # ошибка посреди проверки: всё равно возвращаем IPSet и службу
+        with self.assertRaises(RuntimeError):
+            self.run_with([{"a": ok, "b": ok}, RuntimeError("boom")])
+        self.assertEqual(zapret.ipset_mode(self.z), "loaded")
+
+
+if __name__ == "__main__":
+    unittest.main()

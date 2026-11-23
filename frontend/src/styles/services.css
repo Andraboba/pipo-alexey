@@ -1,0 +1,27 @@
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+
+.svc-head { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.svc-state { display: flex; flex-direction: column; min-width: 140px; }
+.svc-state b { font-size: 28px; line-height: 32px; font-weight: 500; }
+.svc-search { width: 260px; }
+
+.svc-group + .svc-group { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.svc-group-title { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 12px; }
+.svc {
+  display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px; border-radius: 8px; cursor: pointer;
+  transition: background-color .15s var(--ease);
+}
+.svc:hover { background: var(--raised); }
+.svc.on { background: var(--raised); }
+.svc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svc-meta { margin-left: auto; font-size: 12px; color: var(--faint); flex: none; }
+input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--text); flex: none; }
+
+.scan-bar { display: flex; align-items: center; gap: 16px; padding: 16px 20px; position: sticky; bottom: 16px; z-index: 5; }
+.scan-bar b { font-weight: 500; }
+
+.svc-checks { display: flex; flex-direction: column; }
+.svc-check { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 44px; border-top: 1px solid var(--line); }
+.svc-check:first-child { border-top: 0; }
+.svc-check .sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

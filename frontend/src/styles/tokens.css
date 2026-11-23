@@ -1,0 +1,40 @@
+/* Пипо Алексей — графит, сигнальные лампы, моноширинная телеметрия.
+   Янтарь значит только «через запрет», бирюза — «напрямую». Кнопки — графит.
+   Полировка по методике unslop (Damir Sokolovsky, @heydamir, CC BY 4.0). */
+:root {
+  --bg: #141415;
+  --sunk: #0f0f10;
+  --panel: #19191b;
+  --raised: #232325;
+  --line: rgba(237, 237, 237, .08);
+  --line-2: rgba(237, 237, 237, .14);
+  --text: #ededed;
+  --muted: #a1a1a6;
+  --faint: #85858b;
+  --btn: #ededed;
+  --btn-ink: #141415;
+  --amber: #f2b33d;
+  --amber-soft: rgba(242, 179, 61, .12);
+  --teal: #4cc4bd;
+  --teal-soft: rgba(76, 196, 189, .12);
+  --green: #4cc38a;
+  --red: #e5484d;
+  --red-soft: rgba(229, 72, 77, .1);
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #fafafa; --sunk: #f4f4f5; --panel: #ffffff; --raised: #f4f4f5;
+    --line: rgba(23, 23, 23, .08); --line-2: rgba(23, 23, 23, .14);
+    --text: #171717; --muted: #525252; --faint: #737373;
+    --btn: #171717; --btn-ink: #ffffff;
+    --amber: #a86b00; --amber-soft: rgba(201, 138, 15, .12);
+    --teal: #13756f; --teal-soft: rgba(27, 143, 136, .1);
+    --green: #16a34a; --red: #dc2626; --red-soft: rgba(220, 38, 38, .07);
+    color-scheme: light;
+  }
+}

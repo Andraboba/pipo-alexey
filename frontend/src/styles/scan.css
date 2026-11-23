@@ -1,0 +1,65 @@
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* настройка: цели слева, свои цели / 16–20 / стратегии справа */
+.scan-setup { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.targets { display: flex; flex-direction: column; gap: 4px; }
+.tgroup { border: 0; margin: 0; padding: 8px 0 0; min-width: 0; }
+.tgroup + .tgroup { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
+.tgroup-head { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px; }
+.titems { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 16px; }
+.titem { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; min-width: 0; height: 28px; }
+.titem span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.titem .kind { margin-left: auto; font-size: 12px; color: var(--faint); flex: none; }
+input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--text); flex: none; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  font: inherit; font-size: 12px; height: 28px; padding: 0 12px; border-radius: 8px; cursor: pointer;
+  background: var(--sunk); color: var(--faint); border: 1px solid var(--line);
+  transition: background-color .15s var(--ease), color .15s var(--ease);
+}
+.chip.on { background: var(--raised); color: var(--text); border-color: var(--line-2); }
+.chip .cur { margin-left: 8px; color: var(--muted); }
+.chip:disabled { cursor: not-allowed; }
+
+.scan-bar { display: flex; align-items: center; gap: 16px; padding: 16px 20px; position: sticky; bottom: 16px; z-index: 5; }
+.scan-bar b { font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* результаты: строка = стратегия, полоса клеток = цели */
+.scan-results { display: flex; flex-direction: column; }
+.srow {
+  display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) 96px 112px; gap: 16px; align-items: center;
+  min-height: 48px; padding: 8px 0; border-top: 1px solid var(--line);
+}
+.srow.baseline { border-top: 0; color: var(--muted); }
+.sname { display: flex; flex-direction: column; text-align: left; min-width: 0; }
+.sname .sub { font-size: 12px; }
+.link-row { background: none; border: 0; color: inherit; font: inherit; padding: 0; cursor: pointer; }
+.link-row:hover { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 4px; }
+.srow.best .sname { color: var(--text); }
+.srow.best .sname::before { content: "Лучшая"; font-size: 12px; color: var(--green); }
+.srow.broken, .srow.failed { color: var(--faint); }
+.sscore { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; text-align: right; }
+.sscore .sub { font-size: 12px; }
+.sact { display: flex; justify-content: flex-end; }
+
+.cells { display: flex; flex-wrap: wrap; gap: 2px; }
+.cell { width: 12px; height: 12px; border-radius: 3px; background: var(--raised); display: block; flex: none; }
+.cell.ok { background: var(--green); }
+.cell.half { background: color-mix(in srgb, var(--green) 45%, var(--raised)); }
+.cell.bad { background: color-mix(in srgb, var(--red) 70%, var(--raised)); }
+
+.sdetail { padding: 8px 0 16px 0; display: flex; flex-direction: column; gap: 2px; border-top: 1px dashed var(--line); }
+.drow { display: grid; grid-template-columns: 12px minmax(140px, 220px) minmax(0, 1fr) auto; gap: 12px; align-items: center; font-size: 12px; min-height: 24px; }
+.dname { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ddetail { color: var(--muted); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fixed { color: var(--green); }
+
+.progress { width: 180px; height: 4px; border-radius: 2px; background: var(--raised); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: var(--text); transition: width .2s var(--ease); }
+
+@media (max-width: 1000px) {
+  .scan-setup { grid-template-columns: 1fr; }
+  .srow { grid-template-columns: 1fr auto; }
+  .srow .cells { grid-column: 1 / -1; order: 3; }
+}

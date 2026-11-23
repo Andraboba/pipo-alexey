@@ -24,7 +24,7 @@ export default function TopBar() {
       {status && (
         <div className="lamps">
           <LampPill label="Запрет" view={zapretView(status.zapret)} to="panel" />
-          <LampPill label="Telegram" view={tgView(status.tg)} to="telegram" />
+          <LampPill label="Прокси TG" view={tgView(status.tg)} to="telegram" />
         </div>
       )}
       {hasUpdate && <button className="update-pill" onClick={() => go("updates")}>Есть обновление</button>}

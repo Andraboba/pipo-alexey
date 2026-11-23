@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { post, put } from "../../lib/api.js";
 import { zapretView } from "../../lib/status.js";
 import { go, useStore } from "../../store.jsx";
-import { Button, Lamp, Switch, useAction } from "../../ui/controls.jsx";
+import { Button, Lamp, Seg, Switch, useAction } from "../../ui/controls.jsx";
 import { useConfirm } from "../../ui/ConfirmDialog.jsx";
 import { useToast } from "../../ui/Toasts.jsx";
 
@@ -13,8 +13,11 @@ export default function EngineCard() {
   const toast = useToast();
   const confirm = useConfirm();
   const act = useAction();
-  const [strategy, setStrategy] = useState(z.strategy || "general");
-  useEffect(() => { if (z.strategy) setStrategy(z.strategy); }, [z.strategy]);
+  const [strategy, setStrategy] = useState(z.strategy || z.strategies[0] || "");
+  // у движков разные стратегии: после переключения выбор должен быть из нового списка
+  useEffect(() => {
+    setStrategy(z.strategy && z.strategies.includes(z.strategy) ? z.strategy : z.strategies[0] || "");
+  }, [z.strategy, z.engine, z.strategies.join("|")]);
 
   const installed = z.service !== null;
   const running = z.service === "running";
@@ -49,6 +52,37 @@ export default function EngineCard() {
     if (ok) await act(async () => { setZapret(await post("/api/zapret/remove")); toast("Служба удалена"); });
   };
 
+  const switchEngine = async (id) => {
+    const e = z.engines.find((x) => x.id === id);
+    if (!e.exists) {
+      const ok = await confirm({
+        title: `${e.title} не установлен`,
+        body: <>В <code>{e.dir}</code> нет <code>bin\{e.exe}</code>. Установить его можно во вкладке «Обновления» — запрет при этом не остановится.</>,
+        ok: "Открыть «Обновления»",
+      });
+      if (ok) go("updates");
+      return;
+    }
+    const ok = await confirm({
+      title: `Переключиться на ${e.title}?`,
+      body: (
+        <ul>
+          <li>Запрет остановится вместе с драйвером WinDivert: два движка вместе не работают.</li>
+          <li>Ваши сплит-правила, игры и игровой фильтр перенесутся в папку <code>{e.dir}</code>.</li>
+          {installed && <li>Служба перенастроится на стратегию {e.title}{running ? " и запустится снова" : ", запускать её не буду"}. Какая лучше — покажет «Подбор».</li>}
+        </ul>
+      ),
+      ok: "Переключить",
+    });
+    if (!ok) return;
+    await act(async () => {
+      const r = await put("/api/zapret/engine", { engine: id });
+      setZapret(r.status);
+      setRestartNeeded(false);
+      toast(`Движок: ${e.title}` + (r.strategy ? ` · ${r.strategy}` : ""));
+    });
+  };
+
   const autostart = (on) => act(async () => {
     setZapret(await put("/api/zapret/autostart", { enabled: on }));
     toast(on ? "Автозапуск запрета включён" : "Автозапуск запрета выключен");
@@ -59,7 +93,7 @@ export default function EngineCard() {
       <div className="engine-head">
         <Lamp state={view.lamp} />
         <div>
-          <div className="eyebrow">Служба zapret</div>
+          <div className="eyebrow">Служба zapret · {z.engine_title}</div>
           <h1>{view.label}</h1>
           <div className="sub">{view.sub}</div>
         </div>
@@ -68,6 +102,13 @@ export default function EngineCard() {
           <Button disabled={!running && !z.winws_running} onClick={run("/api/zapret/stop", "Запрет остановлен")}>Остановить</Button>
           <Button disabled={!running} onClick={run("/api/zapret/restart", "Запрет перезапущен")}>Перезапустить</Button>
         </div>
+      </div>
+
+      <div className="field">
+        <div className="field-label">Движок</div>
+        <Seg value={z.engine} onChange={switchEngine}
+          options={z.engines.map((e) => ({ v: e.id, label: e.title + (e.exists ? "" : " · не установлен") }))} />
+        <p className="hint">Работает один из двух. zapret2 — новая версия запрета от bol-van со стратегиями на Lua; если с одним сайты не открываются, попробуйте другой</p>
       </div>
 
       <div className="grid2">
@@ -92,7 +133,7 @@ export default function EngineCard() {
       </div>
 
       <div className="engine-foot">
-        <span className="mono">zapret {z.version || "?"} · {z.dir}</span>
+        <span className="mono">{z.engine_title} {z.version || "?"} · {z.dir}</span>
         {installed && <Button plain kind="link danger" onClick={remove}>Удалить службу</Button>}
       </div>
     </div>

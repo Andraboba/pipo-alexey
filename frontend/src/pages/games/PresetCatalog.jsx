@@ -2,13 +2,16 @@ import { post } from "../../lib/api.js";
 import { ROUTE_LABEL } from "../../lib/format.js";
 import { useStore } from "../../store.jsx";
 import { Button } from "../../ui/controls.jsx";
+import { useRemoveProfile } from "./ProfileCard.jsx";
 import { useToast } from "../../ui/Toasts.jsx";
 
 const CONF = { high: "точный", medium: "проверен частично", low: "приблизительный" };
 
 function Preset({ p }) {
-  const { setSplit } = useStore();
+  const { split, setSplit } = useStore();
   const toast = useToast();
+  const removeProfile = useRemoveProfile();
+  const profile = p.added && split?.profiles.find((x) => x.preset === p.id);
   const shown = p.domains.slice(0, 3);
   return (
     <div className={"card preset" + (p.added ? " added" : "")}>
@@ -22,7 +25,12 @@ function Preset({ p }) {
         {p.asns.map((a) => <span className="tag" key={a.asn} title={a.holder}>AS{a.asn}</span>)}
       </div>
       {p.note && <p>{p.note}</p>}
-      {p.added ? <span className="added-mark">В профилях</span> : (
+      {p.added ? (
+        <div className="added-row">
+          <span className="added-mark">В профилях</span>
+          {profile && <Button small kind="ghost" onClick={() => removeProfile(profile)}>Убрать</Button>}
+        </div>
+      ) : (
         <Button small onClick={async () => {
           setSplit(await post("/api/split/profiles", { preset: p.id, route: p.default_route }));
           toast(`${p.name}: ${ROUTE_LABEL[p.default_route]}`);

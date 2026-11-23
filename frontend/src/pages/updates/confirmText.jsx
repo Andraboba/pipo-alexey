@@ -18,6 +18,25 @@ export function confirmText(target, d, status) {
       ),
     };
   }
+  if (target === "zapret2") {
+    const active = status?.zapret.engine === "zapret2";
+    const running = status?.zapret.service === "running";
+    return {
+      title: !d.installed ? `Установить zapret2 ${d.latest || ""}?`
+        : d.newer ? `Обновить zapret2 ${d.local} → ${d.latest}?` : `Переустановить zapret2 ${d.latest || ""}?`,
+      ok: "Скачать и установить",
+      body: (
+        <ul>
+          <li>Скачаю сборку {d.repo} с GitHub и проверю sha256. Внутри — <code>winws2.exe</code> из zapret2 от bol-van и готовые стратегии <code>general*.bat</code>.</li>
+          <li>Папка: <code>{d.dir}</code>{d.installed ? <>, бэкап заменяемых файлов — в <code>data\backups</code></> : ""}.</li>
+          {active
+            ? <li>zapret2 сейчас включён: остановлю его на время установки{running ? " и запущу снова" : ""}.</li>
+            : <li>Сейчас работает другой движок — его <b>не трогаю</b>. Переключиться на zapret2 можно на «Пульте».</li>}
+          <li><b>Не трогаю</b> ваши <code>*-user.txt</code>, <code>ipset-all.txt</code> и настройки игрового фильтра.</li>
+        </ul>
+      ),
+    };
+  }
   if (target === "tg") {
     return {
       title: d.installed

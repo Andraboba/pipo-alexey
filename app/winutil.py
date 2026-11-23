@@ -6,7 +6,9 @@ import csv
 import io
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 CREATE_NO_WINDOW = 0x08000000
 
@@ -88,3 +90,24 @@ def file_version(path: Path) -> str | None:
         return f"{fi.pv_ms >> 16}.{fi.pv_ms & 0xFFFF}.{fi.pv_ls >> 16}.{fi.pv_ls & 0xFFFF}"
     except (AttributeError, OSError, ValueError):
         return None
+
+
+# SetThreadExecutionState: не давать Windows уснуть, пока идёт долгая задача (действует на поток)
+_ES_CONTINUOUS = 0x80000000
+_ES_SYSTEM_REQUIRED = 0x00000001
+
+
+@contextmanager
+def keep_awake() -> Iterator[None]:
+    """Компьютер не уйдёт в сон, пока поток внутри блока. Экран гаснуть может."""
+    try:
+        ctypes.windll.kernel32.SetThreadExecutionState(_ES_CONTINUOUS | _ES_SYSTEM_REQUIRED)
+    except (AttributeError, OSError):
+        pass
+    try:
+        yield
+    finally:
+        try:
+            ctypes.windll.kernel32.SetThreadExecutionState(_ES_CONTINUOUS)
+        except (AttributeError, OSError):
+            pass

@@ -17,6 +17,11 @@ DATA_DIR = Path(os.environ.get("PIPO_DATA_DIR") or APP_DIR / "data")
 
 DEFAULTS: dict[str, Any] = {
     "zapret_dir": r"C:\Zapret",
+    # второй движок — zapret2 (winws2.exe) в сборке kinlay0; работает только один из двух
+    "zapret2_dir": r"C:\Zapret2",
+    "engine": "flowseal",  # flowseal | zapret2
+    # последняя стратегия каждого движка — чтобы при переключении вернуть свою
+    "strategies": {},
     # None — искать TgWsProxy.exe рядом с запретом
     "tg_exe": None,
 }
@@ -48,8 +53,21 @@ def save(patch: dict[str, Any]) -> dict[str, Any]:
         return data
 
 
+ENGINE_DIR_KEYS = {"flowseal": "zapret_dir", "zapret2": "zapret2_dir"}
+
+
+def engine() -> str:
+    e = load().get("engine")
+    return e if e in ENGINE_DIR_KEYS else "flowseal"
+
+
+def engine_dir(engine_id: str) -> Path:
+    return Path(load()[ENGINE_DIR_KEYS[engine_id]])
+
+
 def zapret_dir() -> Path:
-    return Path(load()["zapret_dir"])
+    """Папка активного движка: с ней работают служба, сплит, подбор и игры."""
+    return engine_dir(engine())
 
 
 def write_text_atomic(path: Path, text: str) -> None:

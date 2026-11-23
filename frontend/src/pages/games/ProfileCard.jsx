@@ -4,6 +4,7 @@ import { domains, fmt, nets, plural, ROUTE_LABEL } from "../../lib/format.js";
 import { useStore } from "../../store.jsx";
 import { Button, Seg, useAction } from "../../ui/controls.jsx";
 import { useConfirm } from "../../ui/ConfirmDialog.jsx";
+import { IconTrash } from "../../ui/icons.jsx";
 import { useToast } from "../../ui/Toasts.jsx";
 
 const ROUTES = [
@@ -17,11 +18,34 @@ const EXPLAIN = {
   zapret: "Подсети в IPSet, домены в списке запрета. Для игровых портов нужен игровой фильтр",
 };
 
+/** Удаление профиля. Игру из каталога убираем сразу — её можно вернуть оттуда же одной кнопкой;
+ *  свою игру (домены и подсети вводили руками) — только после подтверждения. */
+export function useRemoveProfile() {
+  const { setSplit } = useStore();
+  const act = useAction();
+  const toast = useToast();
+  const confirm = useConfirm();
+  return async (p) => {
+    if (!p.preset) {
+      const ok = await confirm({
+        title: `Удалить профиль «${p.name}»?`,
+        body: p.created_by_app ? "Файл со своими подсетями тоже будет удалён." : <>Профиль исчезнет из UI, файл <code>lists/{p.file}</code> останется.</>,
+        ok: "Удалить", danger: true,
+      });
+      if (!ok) return;
+    }
+    act(async () => {
+      setSplit(await del(`/api/split/profiles/${p.id}`));
+      toast(p.preset ? `Убрано: ${p.name}. Вернуть можно из каталога ниже` : `Удалено: ${p.name}`);
+    });
+  };
+}
+
 export default function ProfileCard({ p }) {
   const { status, setSplit } = useStore();
   const act = useAction();
   const toast = useToast();
-  const confirm = useConfirm();
+  const removeProfile = useRemoveProfile();
   const [form, setForm] = useState(null); // null — свёрнуто
 
   const update = (body, msg) => act(async () => { setSplit(await patch(`/api/split/profiles/${p.id}`, body)); if (msg) toast(msg); });
@@ -33,19 +57,15 @@ export default function ProfileCard({ p }) {
     networks: p.networks.join("\n"),
   });
 
-  const remove = async () => {
-    const ok = await confirm({
-      title: `Удалить профиль «${p.name}»?`,
-      body: p.created_by_app ? "Файл со своими подсетями тоже будет удалён." : <>Профиль исчезнет из UI, файл <code>lists/{p.file}</code> останется.</>,
-      ok: "Удалить", danger: true,
-    });
-    if (ok) act(async () => setSplit(await del(`/api/split/profiles/${p.id}`)));
-  };
+  const remove = () => removeProfile(p);
 
   return (
     <div className={"card profile " + p.route}>
       <div>
-        <h3>{p.name}</h3>
+        <div className="profile-head">
+          <h3>{p.name}</h3>
+          <button className="icon-btn danger" title="Убрать игру" aria-label={`Убрать «${p.name}»`} onClick={remove}><IconTrash /></button>
+        </div>
         <div className="stat">
           <span className="num">{fmt(p.total)}</span> {nets(p.total)}
           {p.domains.length > 0 && <> · {p.domains.length} {domains(p.domains.length)}</>}

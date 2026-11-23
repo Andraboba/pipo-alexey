@@ -16,13 +16,11 @@ import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from . import split, suspend, tgproxy, zapret
+from . import settings, split, suspend, tgproxy, zapret
 from .jobs import Job
 from .settings import DATA_DIR, write_text_atomic
 
-ZAPRET_REPO = "Flowseal/zapret-discord-youtube"
 TG_REPO = "Flowseal/tg-ws-proxy"
-ZAPRET_VERSION_URL = "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"
 IPSET_URL = "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/refs/heads/main/.service/ipset-service.txt"
 USER_AGENT = "pipo-alexey"
 
@@ -124,19 +122,27 @@ def _cached_release(repo: str, force: bool) -> dict:
     return rel
 
 
-def check(zdir: Path, force: bool = False) -> dict:
-    out = {}
+def _check_engine(eng: zapret.Engine, force: bool) -> dict:
+    zdir = settings.engine_dir(eng.id)
     zl = zapret.local_version(zdir)
+    installed = zapret.winws_exe_of(zdir, eng).is_file()
+    base = {"local": zl, "installed": installed, "dir": str(zdir), "repo": eng.repo}
     try:
-        rel = _cached_release(ZAPRET_REPO, force)
-        out["zapret"] = {"local": zl, "latest": rel["version"], "newer": is_newer(rel["version"], zl),
-                         "published": rel["published"], "page": rel["page"], "notes": rel["notes"]}
+        rel = _cached_release(eng.repo, force)
+        return base | {"latest": rel["version"], "newer": is_newer(rel["version"], zl),
+                       "published": rel["published"], "page": rel["page"], "notes": rel["notes"]}
     except Exception as e:  # noqa: BLE001
         try:  # запасной путь — тот же файл, что читает service.bat
-            v = http_get(ZAPRET_VERSION_URL, 8).decode().strip()
-            out["zapret"] = {"local": zl, "latest": v, "newer": is_newer(v, zl)}
+            v = http_get(eng.version_url, 8).decode().strip()
+            return base | {"latest": v, "newer": is_newer(v, zl)}
         except Exception:  # noqa: BLE001
-            out["zapret"] = {"local": zl, "error": f"не удалось проверить: {e}"}
+            return base | {"error": f"не удалось проверить: {e}"}
+
+
+def check(force: bool = False) -> dict:
+    """Версии обоих движков (ключи zapret и zapret2) и TG WS Proxy."""
+    out = {"zapret": _check_engine(zapret.ENGINES["flowseal"], force),
+           "zapret2": _check_engine(zapret.ENGINES["zapret2"], force)}
     exe = tgproxy.find_exe()
     tl = tgproxy.local_version(exe)
     try:
@@ -156,7 +162,7 @@ def is_preserved(rel: str) -> bool:
     return any(fnmatch.fnmatch(rel.lower(), pat) for pat in PRESERVE)
 
 
-def safe_extract(zip_path: Path, dest: Path) -> Path:
+def safe_extract(zip_path: Path, dest: Path, exe: str = "winws.exe") -> Path:
     """Распаковка с защитой от путей ../ ; возвращает корневую папку релиза."""
     if dest.exists():
         shutil.rmtree(dest)
@@ -169,8 +175,8 @@ def safe_extract(zip_path: Path, dest: Path) -> Path:
         z.extractall(dest)
     entries = [e for e in dest.iterdir()]
     root = entries[0] if len(entries) == 1 and entries[0].is_dir() else dest
-    if not (root / "service.bat").is_file() or not (root / "bin" / "winws.exe").is_file():
-        raise UpdateError("в архиве нет service.bat / bin/winws.exe — это не похоже на релиз запрета")
+    if not (root / "service.bat").is_file() or not (root / "bin" / exe).is_file():
+        raise UpdateError(f"в архиве нет service.bat / bin/{exe} — это не похоже на релиз этой сборки запрета")
     return root
 
 
@@ -213,9 +219,14 @@ def install_files(new_root: Path, zdir: Path, files: list[str], backup_zip: Path
         raise
 
 
-def update_zapret(job: Job, zdir: Path, expected: str | None) -> dict:
+def update_zapret(job: Job, zdir: Path, expected: str | None, engine: str = "flowseal") -> dict:
+    """Обновить или впервые установить сборку движка engine в zdir.
+
+    Неактивный движок обновляем без остановки запрета: его файлы сейчас никто не держит."""
+    eng = zapret.ENGINES[engine]
+    active = settings.engine() == eng.id
     old = zapret.local_version(zdir)
-    rel = _cached_release(ZAPRET_REPO, force=True)
+    rel = _cached_release(eng.repo, force=True)
     ver = rel["version"]
     if expected and ver != expected:
         raise UpdateError(f"на GitHub уже другая версия ({ver}), проверьте обновления ещё раз")
@@ -225,12 +236,25 @@ def update_zapret(job: Job, zdir: Path, expected: str | None) -> dict:
     job.say(f"Скачиваю {asset['name']}")
     dl = DATA_DIR / "downloads"
     zip_path = download(asset["url"], dl / asset["name"], asset["sha256"], job)
-    new_root = safe_extract(zip_path, dl / f"zapret-{ver}")
+    new_root = safe_extract(zip_path, dl / f"{eng.id}-{ver}", eng.exe)
     copy, keep = plan_files(new_root)
+    # первая установка: «ваших» файлов ещё нет — кладём стартовые из релиза
+    fresh = [k for k in keep if not (zdir / k).exists()]
+    copy, keep = copy + fresh, [k for k in keep if k not in fresh]
     job.say(f"Файлов к установке: {len(copy)}; сохраняю ваши: {', '.join(keep) or '—'}")
 
+    backup = DATA_DIR / "backups" / f"{eng.id}-{old or 'unknown'}-{time.strftime('%Y%m%d-%H%M%S')}.zip"
+    if not active:
+        install_files(new_root, zdir, copy, backup, job)
+        write_text_atomic(zdir / "version.txt", ver)
+        job.say(f"Файлы {'обновлены' if old else 'установлены'} в {zdir}" + (f", бэкап прежних: {backup}" if old else ""))
+        job.say("Сейчас работает другой движок — включить этот можно на «Пульте»")
+        shutil.rmtree(new_root.parent if new_root.parent.name.startswith(eng.id + "-") else new_root, ignore_errors=True)
+        _cache.pop(eng.repo, None)
+        job.say(f"Готово: {old or '—'} → {ver}", "ok")
+        return {"from": old, "to": ver, "backup": str(backup)}
+
     strategy = zapret.installed_strategy()
-    backup = DATA_DIR / "backups" / f"zapret-{old or 'unknown'}-{time.strftime('%Y%m%d-%H%M%S')}.zip"
     job.say("Останавливаю запрет и драйвер WinDivert")
     # что бы ни случилось с файлами, запрет вернётся в прежнее состояние
     with suspend.suspended(zdir, job.say, stop_driver=True) as was:
@@ -250,8 +274,8 @@ def update_zapret(job: Job, zdir: Path, expected: str | None) -> dict:
                 job.say(f"Служба перенастроена на стратегию «{strategy}» из новой версии")
             else:
                 job.say(f"Стратегии «{strategy}» нет в новой версии — выберите другую", "warn")
-    shutil.rmtree(new_root.parent if new_root.parent.name.startswith("zapret-") else new_root, ignore_errors=True)
-    _cache.pop(ZAPRET_REPO, None)
+    shutil.rmtree(new_root.parent if new_root.parent.name.startswith(eng.id + "-") else new_root, ignore_errors=True)
+    _cache.pop(eng.repo, None)
     job.say(f"Готово: {old} → {ver}", "ok")
     return {"from": old, "to": ver, "backup": str(backup)}
 
@@ -293,7 +317,6 @@ def tg_asset_name() -> str:
 def update_tg(job: Job, expected: str | None) -> dict:
     exe = tgproxy.find_exe()
     if not exe:
-        from . import settings
         exe = Path(settings.load()["zapret_dir"]) / tgproxy.EXE_NAME
         job.say(f"TG WS Proxy не найден, установлю в {exe}")
     old = tgproxy.local_version(exe) if exe.exists() else None

@@ -48,7 +48,7 @@ function Legend() {
 }
 
 export default function ScanResults({ result, running, job, current, onApplied }) {
-  const { status, setZapret, setRestartNeeded } = useStore();
+  const { status, setZapret, setRestartNeeded, setSplit } = useStore();
   const confirm = useConfirm();
   const toast = useToast();
   const [open, setOpen] = useState(null);
@@ -76,6 +76,13 @@ export default function ScanResults({ result, running, job, current, onApplied }
     if (z.service === "running") setRestartNeeded(true);
     toast("Стратегия применена: " + strategy);
     onApplied?.();
+  };
+
+  // открытый без запрета сайт, который стратегия ломает, проще всего пустить мимо запрета
+  const direct = async (t) => {
+    const host = new URL(t.url).hostname;
+    setSplit(await post("/api/split/rules", { value: host, route: "direct", note: "ломает стратегия" }));
+    toast(`${host} теперь идёт напрямую — перезапустите запрет`);
   };
 
   const hover = (rowResults) => (h) => setTip(h && { ...h, row: rowResults, base: result.baseline?.[h.t.id], meta: meta[h.t.id] });
@@ -153,6 +160,12 @@ export default function ScanResults({ result, running, job, current, onApplied }
                     <span className="ddetail">{x ? x.detail : "—"}</span>
                     {st === "blocked" && cellState(x, meta[t.id]) === "ok" && <span className="fixed">починила</span>}
                     {st === "dead" && <span className="sub">не отвечает нигде</span>}
+                    {st === "open" && x && t.kind === "url" && cellState(x, meta[t.id]) !== "ok" && (
+                      <span className="row" style={{ gap: 8 }}>
+                        <span className="t-bad">сломала</span>
+                        <Button small plain kind="link" disabled={!status.admin} onClick={() => direct(t)}>Пустить напрямую</Button>
+                      </span>
+                    )}
                   </div>
                 );
               })}

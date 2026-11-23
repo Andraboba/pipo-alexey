@@ -666,12 +666,13 @@ def _backup_originals(zdir: Path) -> None:
             (dest / name).write_bytes(src.read_bytes())
 
 
-def _write_ipset_all(zdir: Path, st: State, mode: str) -> None:
+def _write_ipset_all(zdir: Path, st: State, mode: str, adopt: bool = True) -> None:
     all_file = zapret.ipset_all(zdir)
     # кто-то обновил ipset-all мимо нас (service.bat → Update IPSet List) — берём его как новую базу
-    # смотрим на то, что лежит сейчас, а не на целевой режим: иначе переход в «Все» затрёт свежий список
+    # смотрим на то, что лежит сейчас, а не на целевой режим: иначе переход в «Все» затрёт свежий список.
+    # adopt=False — папка другого движка: там чужой файл, а не обновление списка
     cur_sha = _sha(all_file)
-    if zapret.ipset_mode(zdir) == "loaded" and st.ipset_all_sha and cur_sha and cur_sha != st.ipset_all_sha:
+    if adopt and zapret.ipset_mode(zdir) == "loaded" and st.ipset_all_sha and cur_sha and cur_sha != st.ipset_all_sha:
         set_base(read_list(all_file))
     merged = _merged_ipset(zdir, st)
     if not merged:
@@ -687,7 +688,8 @@ def _write_ipset_all(zdir: Path, st: State, mode: str) -> None:
     st.ipset_all_sha = _sha(all_file)
 
 
-def apply(zdir: Path, st: State | None = None, ipset_mode: str | None = None) -> list[str]:
+def apply(zdir: Path, st: State | None = None, ipset_mode: str | None = None, adopt: bool = True) -> list[str]:
+    """Записать списки в lists/ папки zdir. adopt=False — при смене движка (см. _write_ipset_all)."""
     with _lock:
         st = st or load(zdir)
         _ensure_base(zdir)
@@ -703,7 +705,7 @@ def apply(zdir: Path, st: State | None = None, ipset_mode: str | None = None) ->
             write_text_atomic(path, text)
             written.append(name)
         before = _sha(zapret.ipset_all(zdir))
-        _write_ipset_all(zdir, st, ipset_mode or zapret.ipset_mode(zdir))
+        _write_ipset_all(zdir, st, ipset_mode or zapret.ipset_mode(zdir), adopt)
         if _sha(zapret.ipset_all(zdir)) != before:
             written.append("ipset-all.txt")
         st.applied_at = time.time()

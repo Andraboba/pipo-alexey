@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Iterator
 
-from . import split, winutil, zapret
+from . import split, zapret
 from .settings import DATA_DIR, write_text_atomic
 
 Log = Callable[..., None]  # (text, level="info")
@@ -42,7 +42,7 @@ def _journal() -> Path:
 
 def take(zdir: Path) -> Snapshot:
     service = zapret.service_state()
-    bat = service not in _RUNNING and winutil.process_running("winws.exe")
+    bat = service not in _RUNNING and zapret.winws_running()
     return Snapshot(zdir=str(zdir), service=service, bat_winws=bat, ipset=zapret.ipset_mode(zdir))
 
 
@@ -65,7 +65,7 @@ def restore(snap: Snapshot, log: Log) -> bool:
             ok = False
             log(f"Не удалось вернуть службу: {e}", "error")
     if snap.bat_winws:
-        log("winws.exe был запущен через .bat — запустите его заново", "warn")
+        log("winws был запущен через .bat — запустите его заново", "warn")
     return ok
 
 
@@ -101,7 +101,7 @@ def recover(log: Log) -> bool:
     try:
         zapret.stop_all()  # winws прерванного подбора мог остаться жить — служба рядом с ним не нужна
     except Exception as e:  # noqa: BLE001
-        log(f"Не удалось остановить оставшийся winws.exe: {e}", "warn")
+        log(f"Не удалось остановить оставшийся winws: {e}", "warn")
     restore(snap, log)
     _journal().unlink(missing_ok=True)  # повторять бесконечно при каждом старте не будем
     return True

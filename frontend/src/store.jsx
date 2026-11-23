@@ -7,10 +7,12 @@ export const useStore = () => useContext(StoreCtx);
 
 export const JOB_TITLE = {
   zapret: "Обновление запрета",
+  zapret2: "Обновление zapret2",
   tg: "Обновление TG WS Proxy",
   ipset: "Обновление списков",
   asn: "Обновление подсетей игр",
   scan: "Подбор стратегии",
+  evolve: "Эволюция стратегий",
   recover: "Возврат запрета",
 };
 

@@ -40,18 +40,18 @@ class ScanError(RuntimeError):
 
 # ---------- цели ----------
 
-def _target(tid: str, name: str, kind: str, group: str, **kw) -> dict:
+def target(tid: str, name: str, kind: str, group: str, **kw) -> dict:
     return {"id": tid, "name": name, "kind": kind, "group": group, **kw}
 
 
 def parse_targets_txt(zdir: Path) -> list[dict]:
-    """utils/targets.txt из сборки Flowseal: Name = "https://…" или "PING:1.2.3.4"."""
+    """utils/targets.txt из сборки (Flowseal или zapret2): Name = "https://…" или "PING:1.2.3.4"."""
     out = []
     try:
         text = (zdir / "utils" / "targets.txt").read_text(encoding="utf-8-sig", errors="replace")
     except OSError:
         return out
-    group = "Flowseal"
+    group = zapret.engine_of(zdir).title
     for line in text.splitlines():
         if line.startswith("###"):
             group = line.strip("# ").strip() or group
@@ -61,9 +61,9 @@ def parse_targets_txt(zdir: Path) -> list[dict]:
             continue
         name, val = m.groups()
         if val.upper().startswith("PING:"):
-            out.append(_target("ft-" + name, name, "ip", group, host=val[5:].strip(), port=None))
+            out.append(target("ft-" + name, name, "ip", group, host=val[5:].strip(), port=None))
         else:
-            out.append(_target("ft-" + name, name, "url", group, url=val))
+            out.append(target("ft-" + name, name, "url", group, url=val))
     return out
 
 
@@ -78,13 +78,13 @@ def available_targets(zdir: Path) -> list[dict]:
     from . import presets
     targets = parse_targets_txt(zdir)
     for t in targets:
-        t["about"] = f"{t['group']} · список Flowseal"
+        t["about"] = f"{t['group']} · utils\\targets.txt сборки"
     for p in split.snapshot(zdir)["profiles"]:
         group = "Игра: " + p["name"]
         pr = presets.get(p["preset"]) if p.get("preset") else None
         hosts = pr["probe"] if pr and pr.get("probe") else p["domains"]
         for h in hosts:
-            targets.append(_target(f"g-{p['id']}-{h}", h, "url", group, url="https://" + h,
+            targets.append(target(f"g-{p['id']}-{h}", h, "url", group, url="https://" + h,
                                    about=f"{p['name']} · сайт, лаунчер или API"))
     return targets
 
@@ -101,13 +101,13 @@ def parse_custom(text: str) -> list[dict]:
         host, port = (m.group(1), m.group(2)) if m else (s, None)
         try:
             ipaddress.ip_address(host)
-            out.append(_target("c-" + s, s, "ip", "Свои", host=host, port=int(port or 443),
+            out.append(target("c-" + s, s, "ip", "Свои", host=host, port=int(port or 443),
                                about=f"Своя цель · TCP {port or 443} и ping"))
             continue
         except ValueError:
             pass
         url = s if re.match(r"^https?://", s, re.I) else "https://" + s
-        out.append(_target("c-" + s, s, "url", "Свои", url=url, about="Своя цель · HTTPS"))
+        out.append(target("c-" + s, s, "url", "Свои", url=url, about="Своя цель · HTTPS"))
     return out
 
 
@@ -115,7 +115,7 @@ def dpi_suite(fetch=None) -> list[dict]:
     from . import updater
     fetch = fetch or (lambda u: updater.http_get(u, 10).decode("utf-8", "replace"))
     data = json.loads(fetch(DPI_SUITE_URL))
-    return [_target("dpi-" + str(e["id"]), f"{e.get('provider', '')} {e.get('country', '')}".strip() or e["host"], "dpi",
+    return [target("dpi-" + str(e["id"]), f"{e.get('provider', '')} {e.get('country', '')}".strip() or e["host"], "dpi",
                     "Заморозка 16–20 КБ", host=e["host"], about=f"Набор hyperion-cs · {e['host']}") for e in data]
 
 
@@ -196,6 +196,14 @@ def check_ip(t: dict) -> dict:
     return {"score": score, "detail": "; ".join(parts), "ms": round((time.perf_counter() - t0) * 1000)}
 
 
+def make_payload() -> Path:
+    """Случайные 64 КБ для проверки заморозки 16–20 КБ. Удаляет вызывающий."""
+    fd, name = tempfile.mkstemp(prefix="pipo-dpi-", suffix=".bin")
+    with os.fdopen(fd, "wb") as f:
+        f.write(os.urandom(DPI_BYTES))
+    return Path(name)
+
+
 def check_all(targets: list[dict], payload: Path) -> dict[str, dict]:
     def one(t):
         if t["kind"] == "url":
@@ -239,7 +247,7 @@ def grade(res: dict) -> dict:
         r["of"] = n
         r["fixed"] = sum(1 for tid in counted if meta[tid]["status"] == "blocked" and part[tid] >= 1)
         r["broke"] = sum(1 for tid in counted if meta[tid]["status"] == "open" and part[tid] < 1)
-        # как у NetFix: идеальная — всё учитываемое проходит, частичная — хоть что-то
+        # идеальная — всё учитываемое проходит, частичная — хоть что-то
         r["grade"] = "ideal" if n and r["score"] >= n - 1e-9 else "partial" if r["score"] > 0 else "broken"
         r["avg_ms"] = round(r["ms"] / max(1, len(targets)))
     res["meta"] = meta
@@ -251,21 +259,24 @@ def grade(res: dict) -> dict:
     return res
 
 
-# ---------- последний результат (как кеш у NetFix: не пересканировать каждый раз) ----------
+# ---------- последний результат (не пересканировать каждый раз) ----------
 
-def _last_file() -> Path:
+# у каждого движка свой: стратегии у них разные, «применить лучшую» чужого движка не сработает
+
+def _last_file(engine: str) -> Path:
     from .settings import DATA_DIR
-    return DATA_DIR / "scan-last.json"
+    # у Flowseal имя прежнее — результат, сохранённый до появления второго движка, не теряется
+    return DATA_DIR / ("scan-last.json" if engine == "flowseal" else f"scan-last-{engine}.json")
 
 
 def save_last(res: dict) -> None:
     from .settings import write_text_atomic
-    write_text_atomic(_last_file(), json.dumps(res, ensure_ascii=False))
+    write_text_atomic(_last_file(res.get("engine") or "flowseal"), json.dumps(res, ensure_ascii=False))
 
 
-def load_last() -> dict | None:
+def load_last(engine: str = "flowseal") -> dict | None:
     try:
-        return json.loads(_last_file().read_text(encoding="utf-8"))
+        return json.loads(_last_file(engine).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
 
@@ -273,13 +284,18 @@ def load_last() -> dict | None:
 # ---------- запуск стратегии ----------
 
 def start_winws(zdir: Path, strategy: str) -> subprocess.Popen:
-    args = [a.replace('"', "") for a in zapret.build_args(zdir, strategy, zapret.read_game_filter(zdir))]
+    return launch(zdir, zapret.build_args(zdir, strategy, zapret.read_game_filter(zdir)))
+
+
+def launch(zdir: Path, args: list[str]) -> subprocess.Popen:
+    """Запустить winws/winws2 папки zdir с аргументами в формате build_args и дождаться, пока он поднимется."""
+    args = [a.replace('"', "") for a in args]
     proc = subprocess.Popen([str(zapret.winws_exe(zdir)), *args], cwd=str(zdir / "bin"),
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             creationflags=winutil.CREATE_NO_WINDOW)
     time.sleep(2.0)  # драйвер WinDivert и списки грузятся ~1–2 с
     if proc.poll() is not None:
-        raise ScanError(f"winws завершился с кодом {proc.returncode}")
+        raise ScanError(f"{zapret.engine_of(zdir).exe} завершился с кодом {proc.returncode}")
     return proc
 
 
@@ -290,8 +306,7 @@ def stop_winws(proc: subprocess.Popen | None) -> None:
             proc.wait(5)
         except subprocess.TimeoutExpired:
             pass
-    if winutil.process_running("winws.exe"):
-        winutil.kill_process("winws.exe")
+    zapret.kill_winws()
     time.sleep(0.5)
 
 
@@ -303,17 +318,14 @@ def run_scan(job: Job, zdir: Path, strategies: list[str], targets: list[dict]) -
     all_strats = zapret.list_strategies(zdir)
     strategies = [s for s in strategies if s in all_strats] or all_strats
 
-    res = {"targets": targets, "baseline": {}, "rows": [{"strategy": s, "state": "pending", "results": {}, "score": 0}
+    engine = zapret.engine_of(zdir)
+    res = {"engine": engine.id, "engine_title": engine.title, "targets": targets, "baseline": {}, "rows": [{"strategy": s, "state": "pending", "results": {}, "score": 0}
                                                         for s in strategies], "best": None}
     job.result = res
 
-    job.say(f"Стратегий: {len(strategies)}, целей: {len(targets)}")
+    job.say(f"Движок: {engine.title}. Стратегий: {len(strategies)}, целей: {len(targets)}")
 
-    fd, payload_name = tempfile.mkstemp(prefix="pipo-dpi-", suffix=".bin")
-    with os.fdopen(fd, "wb") as f:
-        f.write(os.urandom(DPI_BYTES))
-    payload = Path(payload_name)
-
+    payload = make_payload()
     proc = None
     try:
         with suspend.suspended(zdir, job.say, ipset="any") as was:

@@ -1,7 +1,11 @@
-"""Работа с установленным запретом (сборка Flowseal zapret-discord-youtube).
+"""Работа с установленным запретом.
 
-Всё совместимо с service.bat: та же служба `zapret`, тот же ключ реестра со
-стратегией, тот же формат utils/game_filter.enabled и режимов ipset-all.txt.
+Движков два, работает один из них:
+  * flowseal — сборка Flowseal zapret-discord-youtube (winws.exe, zapret от bol-van);
+  * zapret2 — сборка kinlay0 zapret2-discord-youtube-strats (winws2.exe, zapret2 от bol-van).
+Сборки устроены одинаково и совместимы с их service.bat: та же служба `zapret`, тот же
+ключ реестра со стратегией, тот же формат utils/game_filter.enabled и режимов ipset-all.txt.
+У zapret2 есть ещё папка lua и переменная %LUA%.
 """
 from __future__ import annotations
 
@@ -10,7 +14,7 @@ import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
-from . import winutil
+from . import settings, winutil
 from .settings import write_text_atomic
 
 SERVICE = "zapret"
@@ -22,6 +26,51 @@ PLACEHOLDER_DOMAIN = "domain.example.abc"
 # порт-заглушка, которую service.bat подставляет при выключенном игровом фильтре
 GAME_FILTER_OFF_PORT = "12"
 DEFAULT_GAME_RANGE = "1024-65535"
+
+
+# ---------- движки ----------
+
+@dataclass(frozen=True)
+class Engine:
+    id: str
+    title: str
+    exe: str  # имя файла в папке bin
+    repo: str  # GitHub-репозиторий сборки
+    version_url: str  # тот же файл версии, что читает service.bat сборки
+
+
+ENGINES = {
+    "flowseal": Engine("flowseal", "zapret · Flowseal", "winws.exe", "Flowseal/zapret-discord-youtube",
+                       "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"),
+    "zapret2": Engine("zapret2", "zapret2 · kinlay0", "winws2.exe", "kinlay0/zapret2-discord-youtube-strats",
+                      "https://raw.githubusercontent.com/kinlay0/zapret2-discord-youtube-strats/main/.service/version.txt"),
+}
+EXES = tuple(e.exe for e in ENGINES.values())
+
+
+def engine_of(zdir: Path) -> Engine:
+    """Движок папки: по exe в bin\\, а если папка пуста — по тому, чья это папка в настройках."""
+    found = [e for e in ENGINES.values() if (zdir / "bin" / e.exe).is_file()]
+    if len(found) == 1:
+        return found[0]
+    for e in ENGINES.values():
+        try:
+            if settings.engine_dir(e.id).resolve() == zdir.resolve():
+                return e
+        except OSError:
+            pass
+    return ENGINES["flowseal"]
+
+
+def winws_running() -> bool:
+    """Работает winws.exe или winws2.exe — неважно, чей: WinDivert на двоих не делится."""
+    return any(winutil.process_running(exe) for exe in EXES)
+
+
+def kill_winws() -> None:
+    for exe in EXES:
+        if winutil.process_running(exe):
+            winutil.kill_process(exe)
 
 
 # ---------- версия и стратегии ----------
@@ -141,21 +190,28 @@ class StrategyError(ValueError):
     pass
 
 
+_EXE_IN_START = re.compile(r"winws2?\.exe", re.I)
+
+
 def extract_winws_command(bat_text: str) -> str:
-    """Аргументы winws.exe из строки `start ... "%BIN%winws.exe" ... ^`."""
+    """Аргументы winws.exe/winws2.exe из строки `start ... "%BIN%winws.exe" ... ^`.
+
+    Пустые строки внутри команды пропускаем: у сборки zapret2 блоки опций разделены
+    пустыми строками, и её service.bat их тоже пропускает."""
     parts: list[str] = []
     capture = False
     for line in bat_text.splitlines():
         s = line.strip()
         if not capture:
-            low = s.lower()
-            idx = low.find("winws.exe")
-            if idx < 0 or not low.startswith("start"):
+            m = _EXE_IN_START.search(s)
+            if not m or not s.lower().startswith("start"):
                 continue
             capture = True
-            s = s[idx + len("winws.exe"):]
+            s = s[m.end():]
             if s.startswith('"'):
                 s = s[1:]
+        elif not s:
+            continue
         cont = s.endswith("^")
         if cont:
             s = s[:-1]
@@ -164,7 +220,7 @@ def extract_winws_command(bat_text: str) -> str:
         if not cont:
             break
     if not capture:
-        raise StrategyError("в файле нет строки запуска winws.exe")
+        raise StrategyError("в файле нет строки запуска winws.exe / winws2.exe")
     return " ".join(parts)
 
 
@@ -215,6 +271,7 @@ def build_args(zdir: Path, strategy: str, gf: GameFilter) -> list[str]:
     values = {
         "BIN": root + "bin\\",
         "LISTS": root + "lists\\",
+        "LUA": root + "lua\\",  # zapret2: в .bat это ..\lua\ относительно bin — у службы нужен полный путь
         "GAMEFILTER": gf.tcp_value if gf.mode != "udp" else gf.udp_value,
         "GAMEFILTERTCP": gf.tcp_value,
         "GAMEFILTERUDP": gf.udp_value,
@@ -229,7 +286,9 @@ def build_args(zdir: Path, strategy: str, gf: GameFilter) -> list[str]:
 
     cmd = re.sub(r"%([A-Za-z_][A-Za-z0-9_]*)%", sub, cmd)
     cmd = _cmd_unescape(cmd)
-    args = []
+    # zapret2: lua/blobs.lua ищет .bin относительно текущей папки, а служба стартует из System32.
+    # --chdir без значения — перейти в папку exe (bin), так же делает service.bat сборки kinlay0
+    args = ["--chdir"] if engine_of(zdir).id == "zapret2" else []
     for tok in _split_args(cmd):
         plain = tok.replace('"', "")
         # кавычки нужны только путям с пробелами; иначе пишем как service.bat
@@ -237,8 +296,12 @@ def build_args(zdir: Path, strategy: str, gf: GameFilter) -> list[str]:
     return args
 
 
+def winws_exe_of(zdir: Path, eng: Engine) -> Path:
+    return zdir / "bin" / eng.exe
+
+
 def winws_exe(zdir: Path) -> Path:
-    return zdir / "bin" / "winws.exe"
+    return winws_exe_of(zdir, engine_of(zdir))
 
 
 def build_bin_path(zdir: Path, strategy: str, gf: GameFilter) -> str:
@@ -348,8 +411,8 @@ def reconfigure_service(zdir: Path) -> bool:
 
 
 def start_service() -> None:
-    if winutil.process_running("winws.exe") and service_state() != "running":
-        raise ServiceError("winws.exe уже запущен отдельно (через .bat). Закройте его или нажмите «Остановить».")
+    if winws_running() and service_state() != "running":
+        raise ServiceError("winws уже запущен отдельно (через .bat). Закройте его или нажмите «Остановить».")
     tcp_timestamps_enable()
     r = winutil.run(["sc", "start", SERVICE])
     if r.returncode not in (0, 1056):  # 1056 — уже запущена
@@ -359,12 +422,13 @@ def start_service() -> None:
 
 
 def stop_all(stop_driver: bool = False) -> None:
-    """Остановить службу и любой winws.exe. stop_driver — ещё и выгрузить WinDivert (для обновления файлов)."""
+    """Остановить службу и любой winws.exe/winws2.exe. stop_driver — ещё и выгрузить WinDivert
+    (для обновления файлов и смены движка: драйвер грузится из папки того, кто его запустил)."""
     if service_state() not in (None, "stopped"):
         winutil.run(["sc", "stop", SERVICE])
         _wait_state("stopped", 15)
-    if winutil.process_running("winws.exe"):
-        winutil.kill_process("winws.exe")
+    if winws_running():
+        kill_winws()
         time.sleep(0.5)
     if stop_driver:
         for drv in ("WinDivert", "WinDivert14"):
@@ -388,16 +452,30 @@ def remove_service() -> None:
             winutil.run(["sc", "delete", drv])
 
 
+def engines_info() -> list[dict]:
+    out = []
+    for e in ENGINES.values():
+        d = settings.engine_dir(e.id)
+        out.append({"id": e.id, "title": e.title, "exe": e.exe, "repo": e.repo, "dir": str(d),
+                    "exists": (d / "bin" / e.exe).is_file(), "version": local_version(d)})
+    return out
+
+
 def status(zdir: Path) -> dict:
     state = service_state()
+    eng = engine_of(zdir)
     return {
+        "engine": eng.id,
+        "engine_title": eng.title,
+        "exe": eng.exe,
+        "engines": engines_info(),
         "dir": str(zdir),
         "exists": winws_exe(zdir).exists(),
         "version": local_version(zdir),
         "service": state,  # None — не установлена
         "strategy": installed_strategy() if state is not None else None,
         "autostart": autostart_enabled() if state is not None else False,
-        "winws_running": winutil.process_running("winws.exe"),
+        "winws_running": winws_running(),
         "strategies": list_strategies(zdir),
         "game_filter": read_game_filter(zdir).to_dict(),
         "ipset_mode": ipset_mode(zdir),

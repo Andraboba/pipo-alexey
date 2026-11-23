@@ -1,0 +1,31 @@
+/* диагностика DNS: строка = сервер, столбец = домен */
+.dtable { display: grid; gap: 0 12px; align-items: center; overflow-x: auto; margin-top: 8px; }
+.dtable > div { min-height: 40px; display: flex; align-items: center; border-top: 1px solid var(--line); font-size: 13px; min-width: 0; }
+.dtable .dh { border-top: 0; color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; line-height: 40px; }
+.dsrv { flex-direction: column; align-items: flex-start !important; justify-content: center; padding: 4px 0; }
+.dsrv .sub { font-size: 12px; }
+.dsrv.sys span:first-child { font-weight: 500; }
+.dv { color: var(--muted); }
+.dv.bad { color: var(--red); font-weight: 500; }
+.dv.muted { color: var(--faint); }
+
+.dlist { display: flex; flex-direction: column; margin: 8px 0; }
+.ditem { display: grid; grid-template-columns: 48px 140px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 40px; border-top: 1px solid var(--line); font-size: 13px; }
+.ditem:first-child { border-top: 0; }
+.ditem .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ditem b { font-weight: 500; }
+
+/* эволюция */
+.evo-stats { display: flex; gap: 32px; flex-wrap: wrap; }
+.evo-stats div { display: flex; flex-direction: column; }
+.evo-stats b { font-size: 24px; line-height: 32px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.evo-stats span { font-size: 12px; color: var(--faint); }
+.evo-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 120px auto; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.evo-row:first-child { border-top: 0; }
+.evo-row .rank { color: var(--faint); font-variant-numeric: tabular-nums; }
+.evo-steps { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.evo-steps .arrow { color: var(--faint); font-size: 12px; }
+.evo-meta { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; }
+.evo-spark { display: flex; align-items: flex-end; gap: 1px; height: 40px; margin-top: 12px; }
+.evo-spark i { flex: 1; background: var(--line-2); border-radius: 1px; min-height: 2px; }
+.evo-spark i.top { background: var(--green); }

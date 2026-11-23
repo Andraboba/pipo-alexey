@@ -36,6 +36,8 @@ export default function UpdatesPage() {
       )}
       <div className="grid2">
         <UpdateCard title="Запрет" repo="Flowseal/zapret-discord-youtube" d={updates?.zapret} action="Обновить запрет" disabled={busy} onRun={() => run("zapret")} />
+        <UpdateCard title="zapret2" repo={updates?.zapret2?.repo || "zapret2"} d={updates?.zapret2} engine
+          action={updates?.zapret2 && !updates.zapret2.installed ? "Установить zapret2" : "Обновить zapret2"} disabled={busy} onRun={() => run("zapret2")} />
         <UpdateCard title="TG WS Proxy" repo="Flowseal/tg-ws-proxy" d={updates?.tg} tg action="Обновить TG WS Proxy" disabled={busy} onRun={() => run("tg")} />
       </div>
       <div className="card">

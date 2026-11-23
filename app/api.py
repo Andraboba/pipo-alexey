@@ -20,7 +20,8 @@ from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, hostsmod, jobs, presets, scan, settings, split, tgproxy, updater, winutil, zapret
+from . import (__version__, dnscheck, evolve, hostsmod, jobs, presets, scan, settings, split, switch, tgproxy, updater,
+               winutil, zapret)
 
 # PIPO_TOKEN — только для разработки фронта (vite dev); в обычном запуске токен случайный
 TOKEN = os.environ.get("PIPO_TOKEN") or secrets.token_urlsafe(24)
@@ -49,7 +50,7 @@ async def guard(request: Request, call_next):
 
 
 JOB_NAMES = {
-    "scan": "подбор стратегии", "zapret": "обновление zapret", "tg": "обновление TG WS Proxy",
+    "scan": "подбор стратегии", "evolve": "эволюция стратегий", "zapret": "обновление zapret", "zapret2": "обновление zapret2", "tg": "обновление TG WS Proxy",
     "ipset": "обновление IPSet", "asn": "обновление подсетей по ASN", "recover": "возврат запрета после прошлого запуска",
 }
 
@@ -78,7 +79,8 @@ def fail(e: Exception, code: int = 400):
     raise HTTPException(code, str(e)) from e
 
 
-ERRORS = (zapret.ServiceError, zapret.StrategyError, split.SplitError, updater.UpdateError, jobs.Busy, scan.ScanError, OSError)
+ERRORS = (zapret.ServiceError, zapret.StrategyError, split.SplitError, updater.UpdateError, jobs.Busy, scan.ScanError,
+          switch.SwitchError, evolve.EvolveError, OSError)
 
 
 # ---------- страница ----------
@@ -117,9 +119,22 @@ def zapret_install(strategy: str = Body(..., embed=True), start: bool = Body(Fal
     need_admin()
     try:
         zapret.install_service(zdir(), strategy, start=start)
+        switch.remember_strategy(settings.engine(), strategy)
     except ERRORS as e:
         fail(e)
     return zapret.status(zdir())
+
+
+@app.put("/api/zapret/engine")
+def zapret_engine(engine: str = Body(..., embed=True)):
+    """Flowseal ⇄ zapret2. Работает только один: служба одна, драйвер WinDivert один."""
+    need_admin()
+    log: list[dict] = []
+    try:
+        res = switch.switch(engine, lambda text, level="info": log.append({"text": text, "level": level}))
+    except ERRORS as e:
+        fail(e)
+    return res | {"log": log, "status": zapret.status(zdir())}
 
 
 @app.post("/api/zapret/{action}")
@@ -303,7 +318,7 @@ def check_host(host: str):
         steps.append({"step": names[min(len(steps), 3)], "ok": False, "detail": type(e).__name__ + ": " + str(e)[:160]})
     ok = bool(steps) and all(s["ok"] for s in steps) and len(steps) == 4
     return {"host": value, "ok": ok, "ms": round((time.perf_counter() - t0) * 1000), "steps": steps,
-            "zapret_running": zapret.service_state() == "running" or winutil.process_running("winws.exe")}
+            "zapret_running": zapret.service_state() == "running" or zapret.winws_running()}
 
 
 # ---------- TG WS Proxy ----------
@@ -352,7 +367,7 @@ def tg_autostart(enabled: bool = Body(..., embed=True)):
 
 @app.get("/api/updates")
 def updates(force: bool = False):
-    return updater.check(zdir(), force=force)
+    return updater.check(force=force)
 
 
 @app.post("/api/updates/{target}")
@@ -362,8 +377,10 @@ def update_run(target: str, confirm: bool = Body(False, embed=True), version: st
         raise HTTPException(400, "обновление ставится только после подтверждения")
     z = zdir()
     try:
-        if target == "zapret":
-            job = jobs.start("zapret", lambda j: updater.update_zapret(j, z, version))
+        if target in ("zapret", "zapret2"):
+            engine = "flowseal" if target == "zapret" else "zapret2"
+            ez = settings.engine_dir(engine)
+            job = jobs.start(target, lambda j: updater.update_zapret(j, ez, version, engine))
         elif target == "tg":
             job = jobs.start("tg", lambda j: updater.update_tg(j, version))
         elif target == "ipset":
@@ -445,7 +462,7 @@ def hosts_check(domain: str):
 def scan_targets():
     z = zdir()
     return {"targets": scan.available_targets(z), "strategies": zapret.list_strategies(z),
-            "current": zapret.installed_strategy(), "last": scan.load_last()}
+            "current": zapret.installed_strategy(), "last": scan.load_last(zapret.engine_of(z).id)}
 
 
 @app.post("/api/scan")
@@ -453,13 +470,7 @@ def scan_run(strategies: list[str] = Body([], embed=True), target_ids: list[str]
              custom: str = Body("", embed=True), dpi: bool = Body(False, embed=True)):
     need_admin()
     z = zdir()
-    known = {t["id"]: t for t in scan.available_targets(z)}
-    targets = [known[i] for i in target_ids if i in known] + scan.parse_custom(custom)
-    if dpi:
-        try:
-            targets += scan.dpi_suite()
-        except Exception as e:  # noqa: BLE001
-            fail(updater.UpdateError(f"не удалось скачать набор 16–20 КБ: {e}"))
+    targets = _scan_targets(z, target_ids, custom, dpi)
     if not targets:
         raise HTTPException(400, "выберите хотя бы одну цель")
     try:
@@ -467,6 +478,125 @@ def scan_run(strategies: list[str] = Body([], embed=True), target_ids: list[str]
     except jobs.Busy as e:
         fail(e, 409)
     return job.to_dict()
+
+
+# ---------- эволюция стратегий (zapret2) ----------
+
+def _scan_targets(z: Path, target_ids: list[str], custom: str, dpi: bool) -> list[dict]:
+    known = {t["id"]: t for t in scan.available_targets(z)}
+    targets = [known[i] for i in target_ids if i in known] + scan.parse_custom(custom)
+    if dpi:
+        try:
+            targets += scan.dpi_suite()
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(502, f"не удалось скачать набор 16–20 КБ: {e}") from e
+    return targets
+
+
+@app.get("/api/evolve")
+def evolve_get():
+    z = zdir()
+    st = evolve.load_state()
+    return {"engine": zapret.engine_of(z).id, "targets": scan.available_targets(z), "last": evolve.load_last(),
+            "can_resume": bool(st and st.get("targets")), "current": zapret.installed_strategy(),
+            "imports": evolve.load_imports()}
+
+
+@app.post("/api/evolve/import")
+def evolve_import(code: str = Body(..., embed=True), save: bool = Body(False, embed=True)):
+    """Код от друга: save=False — в стартовое поколение эволюции, save=True — сразу стратегией в папку zapret2."""
+    need_admin()
+    z = zdir()
+    try:
+        if not save:
+            return {"imported": evolve.add_import(code), "imports": evolve.load_imports()}
+        if zapret.engine_of(z).id != "zapret2":
+            raise HTTPException(409, "код — стратегия zapret2, а сейчас включён другой движок")
+        sh = evolve.parse_code(code)
+        name = evolve.save_bat(z, sh.steps)
+        return {"strategy": name, "added": _route_through_zapret(z, sh.domains), "status": zapret.status(z)}
+    except ERRORS as e:
+        fail(e)
+
+
+@app.delete("/api/evolve/imports")
+def evolve_imports_clear():
+    need_admin()
+    evolve.clear_imports()
+    return {"imports": []}
+
+
+@app.post("/api/evolve")
+def evolve_run(target_ids: list[str] = Body([], embed=True), custom: str = Body("", embed=True),
+               dpi: bool = Body(False, embed=True), hours: float = Body(6, embed=True), resume: bool = Body(False, embed=True)):
+    need_admin()
+    if not 0.05 <= hours <= 12:
+        raise HTTPException(400, "время поиска: от 3 минут до 12 часов")
+    z = zdir()
+    targets = [] if resume else _scan_targets(z, target_ids, custom, dpi)
+    if not resume and not targets:
+        raise HTTPException(400, "выберите хотя бы одну цель")
+    try:
+        job = jobs.start("evolve", lambda j: evolve.run_evolve(j, z, targets, hours, resume=resume))
+    except jobs.Busy as e:
+        fail(e, 409)
+    return job.to_dict()
+
+
+@app.post("/api/evolve/save")
+def evolve_save(key: str = Body(..., embed=True)):
+    """Найденную цепочку — в general (PIPO EVO N).bat; применяет её потом обычная установка службы.
+
+    Свои цели эволюции проверялись без списков, а в .bat цепочка работает только для доменов из списков —
+    поэтому их домены добавляются в сплит «через запрет» (если пользователь не решил о них иначе)."""
+    need_admin()
+    z = zdir()
+    if zapret.engine_of(z).id != "zapret2":
+        raise HTTPException(409, "найденные стратегии — для zapret2, а сейчас включён другой движок")
+    st = evolve.load_state()
+    found = (st or {}).get("pool", {}).get(key)
+    if not found:
+        raise HTTPException(404, "такой стратегии нет в результатах — запустите эволюцию заново")
+    try:
+        name = evolve.save_bat(z, found["steps"])
+        added = _route_through_zapret(z, evolve.custom_domains(st.get("targets", [])))
+    except ERRORS as e:
+        fail(e)
+    return {"strategy": name, "added": added, "status": zapret.status(z)}
+
+
+def _route_through_zapret(z: Path, domains: list[str]) -> list[str]:
+    """Домены — в сплит «через запрет», если пользователь ещё не решил о них сам."""
+    have = {r["value"] for r in split.snapshot(z)["rules"]}
+    added = [d for d in domains if d not in have]
+    for d in added:
+        split.add_rule(z, d, "zapret", note="эволюция")
+    return added
+
+
+# ---------- диагностика ----------
+
+@app.get("/api/diag/dns")
+def dns_last():
+    return dnscheck.load_last()
+
+
+@app.post("/api/diag/dns")
+def dns_run(domains: str = Body("", embed=True)):
+    """Несколько секунд: сотни DNS-запросов параллельно. Ничего в системе не меняет."""
+    extra = []
+    for raw in domains.replace(",", " ").split():
+        if raw.strip():
+            try:
+                kind, value = split.normalize(raw)
+            except split.SplitError as e:
+                fail(e)
+            if kind != "domain":
+                raise HTTPException(400, f"{raw.strip()}: нужен домен, а не IP")
+            extra.append(value)
+    report = dnscheck.run(extra[:10])
+    dnscheck.save_last(report)
+    return report
 
 
 # ---------- настройки ----------
@@ -478,6 +608,12 @@ def settings_get():
 
 @app.put("/api/settings")
 def settings_put(patch: dict = Body(...)):
+    # движок меняется только через /api/zapret/engine: там служба и списки переносятся как надо
+    patch = {k: v for k, v in patch.items() if k not in ("engine", "strategies")}
+    if "zapret2_dir" in patch and not (isinstance(patch["zapret2_dir"], str) and patch["zapret2_dir"].strip()):
+        raise HTTPException(400, "укажите папку zapret2")
+    if "zapret2_dir" in patch and settings.engine() == "zapret2" and not (Path(patch["zapret2_dir"]) / "bin" / "winws2.exe").is_file():
+        raise HTTPException(400, "zapret2 сейчас включён, а в этой папке нет bin\\winws2.exe")
     if "zapret_dir" in patch and not (isinstance(patch["zapret_dir"], str) and patch["zapret_dir"].strip()):
         raise HTTPException(400, "укажите папку запрета")
     if "tg_exe" in patch and patch["tg_exe"] is not None and not isinstance(patch["tg_exe"], str):
@@ -486,4 +622,7 @@ def settings_put(patch: dict = Body(...)):
         raise HTTPException(400, "в этой папке нет service.bat")
     if patch.get("tg_exe") and not Path(patch["tg_exe"]).is_file():
         raise HTTPException(400, "файл TG WS Proxy не найден")
+    dirs = {k: patch.get(k) or settings.load()[k] for k in ("zapret_dir", "zapret2_dir")}
+    if Path(dirs["zapret_dir"]).resolve() == Path(dirs["zapret2_dir"]).resolve():
+        raise HTTPException(400, "у Flowseal и zapret2 должны быть разные папки")
     return settings.save(patch)

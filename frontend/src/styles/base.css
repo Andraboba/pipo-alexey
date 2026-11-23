@@ -22,6 +22,7 @@ a { color: inherit; }
 .t-direct { color: var(--teal); font-weight: 500; }
 .t-zapret { color: var(--amber); font-weight: 500; }
 .t-bad { color: var(--red); font-weight: 500; }
+.t-ok { color: var(--green); font-weight: 500; }
 .count { color: var(--faint); font-weight: 400; font-family: var(--mono); font-size: 12px; }
 .empty { color: var(--faint); padding: 24px 0; text-align: center; }
 

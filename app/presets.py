@@ -25,11 +25,13 @@ PRESETS: list[dict] = [
         "note": "Свои ASN iRacing плюс 333 подсети серверов из lists/ipset-iracing.txt (AWS)",
     },
     {
-        "id": "apex", "name": "Apex Legends", "confidence": "medium", "default_route": "zapret",
+        # «напрямую»: Apex открывается и без запрета, а обход ломает вход — accounts.ea.com (AWS) рвёт
+        # соединение на фейковых пакетах почти у всех стратегий (подбор: 30 из 32)
+        "id": "apex", "name": "Apex Legends", "confidence": "medium", "default_route": "direct",
         "probe": ["www.ea.com", "accounts.ea.com", "www.respawn.com"],
         "domains": ["ea.com", "origin.com", "respawn.com", "tnt-ea.com"],
         "asns": [_a(35028, "Multiplay (Unity)")],
-        "note": "Сервера Multiplay; часть матчей идёт через AWS и Google Cloud",
+        "note": "Сервера Multiplay; часть матчей идёт через AWS и Google Cloud. Через запрет может ломаться вход в аккаунт EA",
     },
     {
         "id": "valve", "name": "Counter-Strike 2 / Dota 2", "confidence": "high", "default_route": "zapret",

@@ -64,14 +64,16 @@ input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var
 }
 .celltip b { font-size: 13px; }
 .celltip .tip-addr { color: var(--muted); overflow-wrap: anywhere; }
-.celltip .tip-row { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-.celltip .tip-row .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.celltip .tip-row { display: flex; align-items: flex-start; gap: 6px; color: var(--muted); }
+.celltip .tip-row .cell { margin-top: 3px; flex: none; }
+.celltip .tip-verdict { font-weight: 500; }
+.celltip .tip-note { color: var(--faint); font-size: 12px; line-height: 16px; }
 .celltip .tip-status { color: var(--text); margin-top: 4px; }
 
 .sdetail { padding: 8px 0 16px 0; display: flex; flex-direction: column; gap: 2px; border-top: 1px dashed var(--line); }
 .drow { display: grid; grid-template-columns: 12px minmax(140px, 220px) minmax(0, 1fr) auto; gap: 12px; align-items: center; font-size: 12px; min-height: 24px; }
 .dname { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ddetail { color: var(--muted); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ddetail { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fixed { color: var(--green); }
 
 .progress { width: 180px; height: 4px; border-radius: 2px; background: var(--raised); overflow: hidden; }

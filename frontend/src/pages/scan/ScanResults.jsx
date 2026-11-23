@@ -6,6 +6,7 @@ import { useConfirm } from "../../ui/ConfirmDialog.jsx";
 import { useToast } from "../../ui/Toasts.jsx";
 import CellTip from "./CellTip.jsx";
 import { cellState } from "./cellState.js";
+import { humanDetail } from "./humanDetail.js";
 
 const GRADE = { ideal: "Идеальная", partial: "Частично", broken: "Не работает", failed: "Не запустилась" };
 
@@ -157,7 +158,7 @@ export default function ScanResults({ result, running, job, current, onApplied }
                   <div key={t.id} className="drow">
                     <i className={"cell " + cellState(x, meta[t.id])} />
                     <span className="dname" title={t.about}>{t.name}</span>
-                    <span className="ddetail">{x ? x.detail : "—"}</span>
+                    <span className="ddetail" title={x ? humanDetail(x.detail) : undefined}>{x ? humanDetail(x.detail) : "—"}</span>
                     {st === "blocked" && cellState(x, meta[t.id]) === "ok" && <span className="fixed">починила</span>}
                     {st === "dead" && <span className="sub">не отвечает нигде</span>}
                     {st === "open" && x && t.kind === "url" && cellState(x, meta[t.id]) !== "ok" && (

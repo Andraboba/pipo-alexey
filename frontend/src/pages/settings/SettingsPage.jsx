@@ -5,7 +5,7 @@ import { Button } from "../../ui/controls.jsx";
 import { useToast } from "../../ui/Toasts.jsx";
 
 export default function SettingsPage() {
-  const { refreshStatus } = useStore();
+  const { refreshStatus, status } = useStore();
   const toast = useToast();
   const [zdir, setZdir] = useState("");
   const [tgExe, setTgExe] = useState("");
@@ -33,6 +33,12 @@ export default function SettingsPage() {
           refreshStatus();
         }}>Сохранить</Button>
       </form>
+      <div className="card">
+        <div className="card-title">О программе</div>
+        <dl className="kv">
+          <dt>Версия</dt><dd className="mono">Пипо Алексей {status?.version || "?"}</dd>
+        </dl>
+      </div>
     </section>
   );
 }

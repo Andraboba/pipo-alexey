@@ -20,7 +20,7 @@ from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import hostsmod, jobs, presets, scan, settings, split, tgproxy, updater, winutil, zapret
+from . import __version__, hostsmod, jobs, presets, scan, settings, split, tgproxy, updater, winutil, zapret
 
 # PIPO_TOKEN — только для разработки фронта (vite dev); в обычном запуске токен случайный
 TOKEN = os.environ.get("PIPO_TOKEN") or secrets.token_urlsafe(24)
@@ -102,6 +102,7 @@ app.mount("/static", StaticFiles(directory=DIST_DIR), name="static")
 def status():
     z = zdir()
     return {
+        "version": __version__,
         "admin": winutil.is_admin(),
         "zapret": zapret.status(z),
         "tg": tgproxy.status(),

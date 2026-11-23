@@ -382,6 +382,16 @@ class UpdaterTests(TempCase):
             updater.safe_extract(evil, self.tmp / "y")
 
 
+class VersionTests(unittest.TestCase):
+    def test_versions_agree(self):
+        import tomllib
+        import app
+        root = Path(__file__).resolve().parent.parent
+        py = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+        js = json.loads((root / "frontend" / "package.json").read_text(encoding="utf-8"))["version"]
+        self.assertEqual((app.__version__, js), (py, py))
+
+
 class ApiGuardTests(unittest.TestCase):
     def call(self, path, headers, method="GET"):
         from app.api import app

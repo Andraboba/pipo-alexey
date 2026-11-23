@@ -22,12 +22,20 @@ function part(s) {
   return s;
 }
 
+const FREEZE = /^заморозка: отправлено (\d+) КБ, ответа нет$/;
+
 export function humanDetail(detail) {
   if (!detail) return "";
-  // сайт: «TLS1.2 <итог>; TLS1.3 <итог>»
-  const tls = [...detail.matchAll(/TLS1\.(\d) ([^;]+)/g)].map((m) => ({ v: m[1], text: part(m[2].trim()) }));
-  if (tls.length === 2 && tls[0].text === tls[1].text) return `TLS 1.2 и 1.3: ${tls[0].text}`;
-  if (tls.length) return tls.map((x) => `TLS 1.${x.v}: ${x.text}`).join(" · ");
+  // сайт: «TLS1.2 <итог>; TLS1.3 <итог>[; заморозка: …]»
+  const chunks = detail.split(";").map((s) => s.trim());
+  const tls = chunks.map((c) => c.match(/^TLS1\.(\d) (.+)$/)).filter(Boolean).map((m) => ({ v: m[1], text: part(m[2]) }));
+  if (tls.length) {
+    const head = tls.length === 2 && tls[0].text === tls[1].text
+      ? `TLS 1.2 и 1.3: ${tls[0].text}`
+      : tls.map((x) => `TLS 1.${x.v}: ${x.text}`).join(" · ");
+    const freeze = chunks.map((c) => c.match(FREEZE)).find(Boolean);
+    return freeze ? `${head}, но соединение замерзло: ${freeze[1]} КБ ушли, ответа нет` : head;
+  }
   // тест на заморозку 16–20 КБ и прочее
   const err = detail.match(/^ошибка (\d+)$/);
   if (err) return curlError(+err[1]);

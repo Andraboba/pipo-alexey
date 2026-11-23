@@ -20,7 +20,7 @@ export default function CellTip({ tip }) {
     : meta.status === "open" && state !== "ok" ? { cls: "t-bad", text: "Без запрета проходит — эта стратегия ломает соединение" }
     : meta.status === "blocked" && state === "ok" ? { cls: "t-ok", text: "Без запрета не проходит — эта стратегия починила" }
     : null;
-  const answered = t.kind === "url" && [r, base].some((x) => /TLS1\.\d \d{3}/.test(x?.detail || ""));
+  const answered = t.kind === "url" && [r, base].some((x) => /TLS1\.\d \d{3}/.test(x?.detail || "") && !/заморозка/.test(x.detail));
   const style = below ? { left, top: box.bottom + 8 } : { left, bottom: window.innerHeight - box.top + 8 };
   return (
     <div className="celltip" style={style} role="tooltip">

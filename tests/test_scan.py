@@ -50,6 +50,26 @@ class ParseTests(unittest.TestCase):
         with mock.patch.object(scan, "_run_curl", return_value=(0, "200 65536 4096 0.4", "")):
             self.assertEqual(scan.check_dpi(t, Path("p"))["score"], 1)
 
+    def test_url_freeze_after_handshake_is_failure(self):
+        """HEAD отвечает (рукопожатие и короткий ответ пропущены), а 64 КБ замерзают —
+        так у ТСПУ выглядит «Discord зелёный в подборе, но не грузится»."""
+        head = (0, "404", "")
+        frozen = (28, f"000 65536 0 {scan.DPI_TIMEOUT}.01", "")
+        with mock.patch.object(scan, "_run_curl", side_effect=[head, head, frozen]):
+            r = scan.check_url({"url": "https://x"}, Path("p"))
+        self.assertEqual(r["score"], 0)
+        self.assertIn("заморозка", r["detail"])
+        with mock.patch.object(scan, "_run_curl", side_effect=[head, head, (0, "405 65536 120 0.3", "")]):
+            self.assertEqual(scan.check_url({"url": "https://x"}, Path("p"))["score"], 1)
+        # сброс соединения на большом POST — не заморозка: сайт не наказываем
+        with mock.patch.object(scan, "_run_curl", side_effect=[head, head, (56, "000 16384 0 0.2", "")]):
+            self.assertEqual(scan.check_url({"url": "https://x"}, Path("p"))["score"], 1)
+
+    def test_url_freeze_probe_skipped_when_site_failed(self):
+        with mock.patch.object(scan, "_run_curl", return_value=(28, "", "timeout")) as run:
+            self.assertEqual(scan.check_url({"url": "https://x"}, Path("p"))["score"], 0)
+        self.assertEqual(run.call_count, 2)  # только два HEAD, POST не тратим
+
     def test_url_cert_substitution_is_failure(self):
         with mock.patch.object(scan, "_run_curl", return_value=(60, "", "SSL certificate problem: self-signed")):
             r = scan.check_url({"url": "https://x"})

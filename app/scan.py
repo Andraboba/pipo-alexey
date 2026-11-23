@@ -2,7 +2,9 @@
 
 Методика повторяет официальный тестер Flowseal (utils/test zapret.ps1):
   * сайт — curl HEAD по HTTPS отдельно с TLS 1.2 и TLS 1.3; ошибка сертификата =
-    подмена (блокировка), а не «работает»;
+    подмена (блокировка), а не «работает». Если сайт ответил — ещё POST 64 КБ на него же:
+    ТСПУ часто пропускает рукопожатие и короткий ответ, но замораживает соединение после
+    16–20 КБ. Так HEAD зелёный, а Discord висит на загрузке — это считаем блокировкой;
   * «16–20 КБ» — набор hyperion-cs/dpi-checkers: POST 64 КБ; если отправили, а в ответ
     ничего и упёрлись в таймаут — характерная заморозка соединения DPI;
   * IP/подсеть игры — TCP-подключение к порту + ping.
@@ -134,7 +136,7 @@ _CERT = re.compile(r"certificate|SSL certificate problem|self[- ]?signed|unable 
 _UNSUP = re.compile(r"not supported|unsupported|Unknown option|Unrecognized option", re.I)
 
 
-def check_url(t: dict) -> dict:
+def check_url(t: dict, payload: Path | None = None) -> dict:
     parts, oks = [], 0
     t0 = time.perf_counter()
     for label, extra in (("TLS1.2", ["--tlsv1.2", "--tls-max", "1.2"]), ("TLS1.3", ["--tlsv1.3", "--tls-max", "1.3"])):
@@ -150,22 +152,34 @@ def check_url(t: dict) -> dict:
             parts.append(f"{label} не поддерживается")
         else:
             parts.append(f"{label} ошибка {code}")
-    return {"score": oks / 2, "detail": "; ".join(parts), "ms": round((time.perf_counter() - t0) * 1000)}
+    score = oks / 2
+    if payload is not None and score > 0:
+        frozen, _, detail = _freeze_probe(t["url"], payload)
+        if frozen:
+            score = 0
+            parts.append(detail)
+    return {"score": score, "detail": "; ".join(parts), "ms": round((time.perf_counter() - t0) * 1000)}
+
+
+def _freeze_probe(url: str, payload: Path) -> tuple[bool, bool, str]:
+    """POST 64 КБ (методика hyperion-cs/dpi-checkers). -> (заморозка, ответ пришёл, подробность).
+    Заморозка — данные ушли, а в ответ ничего до таймаута: так DPI «душит» соединение после 16–20 КБ."""
+    code, out, err = _run_curl(["--range", f"0-{DPI_BYTES - 1}", "-m", str(DPI_TIMEOUT), "--connect-timeout", "3",
+                                "-w", "%{http_code} %{size_upload} %{size_download} %{time_total}", "-o", "NUL",
+                                "-X", "POST", "--data-binary", f"@{payload}", "-s", url], DPI_TIMEOUT + 3)
+    m = re.match(r"^(\d{3})\s+(\d+)\s+(\d+)\s+([\d.]+)$", out)
+    up, down, took = (int(m.group(2)), int(m.group(3)), float(m.group(4))) if m else (0, 0, 0.0)
+    if up > 0 and down == 0 and took >= DPI_TIMEOUT and code != 0:
+        return True, False, f"заморозка: отправлено {up // 1024} КБ, ответа нет"
+    if code == 0:
+        return False, True, f"HTTP {m.group(1) if m else '?'}, {down // 1024} КБ"
+    return False, False, f"ошибка {code}"
 
 
 def check_dpi(t: dict, payload: Path) -> dict:
     t0 = time.perf_counter()
-    code, out, err = _run_curl(["--range", f"0-{DPI_BYTES - 1}", "-m", str(DPI_TIMEOUT), "--connect-timeout", "3",
-                                "-w", "%{http_code} %{size_upload} %{size_download} %{time_total}", "-o", "NUL",
-                                "-X", "POST", "--data-binary", f"@{payload}", "-s", "https://" + t["host"]], DPI_TIMEOUT + 3)
-    m = re.match(r"^(\d{3})\s+(\d+)\s+(\d+)\s+([\d.]+)$", out)
-    up, down, took = (int(m.group(2)), int(m.group(3)), float(m.group(4))) if m else (0, 0, 0.0)
-    ms = round((time.perf_counter() - t0) * 1000)
-    if up > 0 and down == 0 and took >= DPI_TIMEOUT and code != 0:
-        return {"score": 0, "detail": f"заморозка: отправлено {up // 1024} КБ, ответа нет", "ms": ms}
-    if code == 0:
-        return {"score": 1, "detail": f"HTTP {m.group(1) if m else '?'}, {down // 1024} КБ", "ms": ms}
-    return {"score": 0, "detail": f"ошибка {code}", "ms": ms}
+    _, answered, detail = _freeze_probe("https://" + t["host"], payload)
+    return {"score": 1 if answered else 0, "detail": detail, "ms": round((time.perf_counter() - t0) * 1000)}
 
 
 def _ping(host: str) -> int | None:
@@ -207,7 +221,7 @@ def make_payload() -> Path:
 def check_all(targets: list[dict], payload: Path) -> dict[str, dict]:
     def one(t):
         if t["kind"] == "url":
-            return t["id"], check_url(t)
+            return t["id"], check_url(t, payload)
         if t["kind"] == "dpi":
             return t["id"], check_dpi(t, payload)
         return t["id"], check_ip(t)

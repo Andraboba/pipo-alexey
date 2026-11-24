@@ -89,7 +89,7 @@ export default function EngineCard() {
   });
 
   return (
-    <div className="engine card">
+    <div className="engine card" data-tour="engine">
       <div className="engine-head">
         <Lamp state={view.lamp} />
         <div>

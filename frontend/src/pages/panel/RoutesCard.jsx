@@ -37,7 +37,7 @@ export default function RoutesCard() {
   const seg = (cls, n, title) => n > 0 && <i className={cls} style={{ flex: n / total }} title={title} />;
 
   return (
-    <div className="card routes">
+    <div className="card routes" data-tour="routes">
       <div className="routes-head">
         <div className="card-title">Маршруты</div>
         <span className="sub">

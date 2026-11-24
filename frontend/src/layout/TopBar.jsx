@@ -1,10 +1,20 @@
+import { useCallback, useState } from "react";
 import { go, useStore } from "../store.jsx";
 import { Logo } from "../ui/icons.jsx";
 import { zapretView, tgView } from "../lib/status.js";
+import { cssRect } from "../lib/uiScale.js";
+import LampMenu from "./LampMenu.jsx";
 
-function LampPill({ label, view, to }) {
+function LampPill({ label, view, to, kind, open, onMenu }) {
   return (
-    <button className="lamp" onClick={() => go(to)}>
+    <button
+      className={"lamp" + (open ? " open" : "")}
+      onClick={() => go(to)}
+      onContextMenu={(e) => { e.preventDefault(); onMenu(kind, cssRect(e.currentTarget)); }}
+      title="Клик — открыть вкладку, правая кнопка — включить или выключить"
+      aria-haspopup="menu"
+      aria-expanded={open}
+    >
       <i className={view.lamp ? "on-" + view.lamp : ""} />
       <span>{label}</span>
       <b>{view.on ? "вкл" : "выкл"}</b>
@@ -15,6 +25,9 @@ function LampPill({ label, view, to }) {
 export default function TopBar() {
   const { status, updates } = useStore();
   const hasUpdate = updates?.zapret?.newer || updates?.tg?.newer;
+  const [menu, setMenu] = useState(null);
+  const close = useCallback(() => setMenu(null), []);
+  const onMenu = (kind, anchor) => setMenu((m) => (m?.kind === kind ? null : { kind, anchor }));
   return (
     <header className="topbar">
       <div className="brand">
@@ -22,12 +35,13 @@ export default function TopBar() {
         <span>Пипо <span className="dim">Алексей</span></span>
       </div>
       {status && (
-        <div className="lamps">
-          <LampPill label="Запрет" view={zapretView(status.zapret)} to="panel" />
-          <LampPill label="Прокси TG" view={tgView(status.tg)} to="telegram" />
+        <div className="lamps" data-tour="lamps">
+          <LampPill label="Запрет" kind="zapret" view={zapretView(status.zapret)} to="panel" open={menu?.kind === "zapret"} onMenu={onMenu} />
+          <LampPill label="Прокси TG" kind="tg" view={tgView(status.tg)} to="telegram" open={menu?.kind === "tg"} onMenu={onMenu} />
         </div>
       )}
       {hasUpdate && <button className="update-pill" onClick={() => go("updates")}>Есть обновление</button>}
+      {menu && status && <LampMenu kind={menu.kind} anchor={menu.anchor} onClose={close} />}
     </header>
   );
 }

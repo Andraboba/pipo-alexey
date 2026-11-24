@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { get, put } from "../../lib/api.js";
 import { useStore } from "../../store.jsx";
-import { Button } from "../../ui/controls.jsx";
+import { Button, Seg } from "../../ui/controls.jsx";
+import { SCALE_OPTIONS, useUiScale } from "../../lib/uiScale.js";
+import { startTour } from "../../ui/Tour.jsx";
 import { useToast } from "../../ui/Toasts.jsx";
 
 export default function SettingsPage() {
@@ -10,6 +12,7 @@ export default function SettingsPage() {
   const [zdir, setZdir] = useState("");
   const [tgExe, setTgExe] = useState("");
   const [z2dir, setZ2dir] = useState("");
+  const [scalePref, scale, setScale] = useUiScale();
 
   useEffect(() => {
     get("/api/settings").then((s) => { setZdir(s.zapret_dir || ""); setZ2dir(s.zapret2_dir || ""); setTgExe(s.tg_exe || ""); }).catch((e) => toast(e.message, true));
@@ -39,6 +42,23 @@ export default function SettingsPage() {
           refreshStatus();
         }}>Сохранить</Button>
       </form>
+      <div className="card stack" data-tour="tour">
+        <div className="field">
+          <div className="field-label">Масштаб интерфейса</div>
+          <Seg value={scalePref} onChange={setScale} options={SCALE_OPTIONS} />
+          <p className="hint" style={{ marginBottom: 0 }}>
+            {scalePref === "auto"
+              ? `Подстраивается под размер окна: сейчас ${Math.round(scale * 100)}%. На весь экран всё становится крупнее`
+              : "Одинаковый при любом размере окна"}
+          </p>
+        </div>
+        <div className="field">
+          <div className="field-label">Гайд</div>
+          <div className="row">
+            <Button onClick={startTour}>Пройти гайд ещё раз</Button>
+          </div>
+        </div>
+      </div>
       <div className="card">
         <div className="card-title">О программе</div>
         <dl className="kv">

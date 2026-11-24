@@ -22,7 +22,7 @@ export default function TelegramPage() {
 
   return (
     <section className="tab">
-      <div className="engine card">
+      <div className="engine card" data-tour="tg">
         <div className="engine-head">
           <Lamp state={view.lamp} />
           <div>

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StoreProvider, useHashTab, useStore } from "./store.jsx";
 import TopBar from "./layout/TopBar.jsx";
 import Nav from "./layout/Nav.jsx";
 import Banners from "./layout/Banners.jsx";
+import Tour, { startTour, tourSeen } from "./ui/Tour.jsx";
 import PanelPage from "./pages/panel/PanelPage.jsx";
 import SplitPage from "./pages/split/SplitPage.jsx";
 import GamesPage from "./pages/games/GamesPage.jsx";
@@ -40,6 +41,9 @@ function Shell() {
     localStorage.setItem("navCollapsed", c ? "0" : "1");
     return !c;
   });
+  // первый запуск — гайд по вкладкам, как только есть что показывать
+  const ready = !!status;
+  useEffect(() => { if (ready && !tourSeen()) startTour(); }, [ready]);
   return (
     <>
       <TopBar />
@@ -51,6 +55,7 @@ function Shell() {
           {status ? <Page key={tab} /> : !offline && <div className="empty">Загрузка…</div>}
         </main>
       </div>
+      {status && <Tour />}
     </>
   );
 }

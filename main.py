@@ -30,6 +30,8 @@ from app import winutil
 from app.settings import DATA_DIR, FROZEN
 
 DEFAULT_PORT = 47800
+# порт, который выбрала оболочка, уже занят — она перезапустит сервер на другом (desktop/src/server.rs)
+EXIT_PORT_BUSY = 3
 TITLE = "Пипо Алексей"
 log = logging.getLogger("pipo")
 
@@ -47,6 +49,15 @@ def relaunch_as_admin() -> bool:
     params = subprocess.list2cmdline(sys.argv[1:] if FROZEN else sys.argv)
     rc = ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, 1)
     return rc > 32
+
+
+def port_is_free(port: int) -> bool:
+    with socket.socket() as s:
+        try:
+            s.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
 
 
 def free_port(preferred: int) -> int:
@@ -135,7 +146,14 @@ def main() -> None:
     setup_logging()
     if winutil.is_admin():
         recover_after_crash()
-    port = free_port(args.port)
+    if args.parent_pid:
+        # оболочка ждёт сервер ровно на этом порту: молча занять соседний нельзя, она бы его не нашла
+        if not port_is_free(args.port):
+            log.warning("порт %s занят — оболочка выберет другой", args.port)
+            sys.exit(EXIT_PORT_BUSY)
+        port = args.port
+    else:
+        port = free_port(args.port)
     url = f"http://127.0.0.1:{port}/"
     try:
         server, thread = start_server(port)

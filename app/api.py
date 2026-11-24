@@ -617,23 +617,32 @@ def settings_get():
     return settings.load()
 
 
-UI_THEMES = ("system", "dark", "light")
+UI_PREFS = {
+    "theme": ("ui_theme", ("system", "dark", "light")),
+    "scale": ("ui_scale", ("0.9", "1", "1.1", "1.25", "1.4")),
+    "tour_done": ("ui_tour_done", (True, False)),
+}
 
 
 @app.put("/api/ui")
 def ui_put(patch: dict = Body(...)):
-    """Оформление интерфейса. Запрет не трогает — разрешено и во время подбора."""
-    theme = patch.get("theme")
-    if theme not in UI_THEMES:
-        raise HTTPException(400, f"theme: одно из {', '.join(UI_THEMES)}")
-    settings.save({"ui_theme": theme})
-    return {"theme": theme}
+    """Оформление интерфейса (тема, масштаб, пройденный гайд). Запрет не трогает — разрешено и во время подбора."""
+    save = {}
+    for k, v in patch.items():
+        if k not in UI_PREFS:
+            raise HTTPException(400, f"неизвестная настройка: {k}")
+        key, allowed = UI_PREFS[k]
+        if not any(v == a and type(v) is type(a) for a in allowed):
+            raise HTTPException(400, f"{k}: одно из {', '.join(map(str, allowed))}")
+        save[key] = v
+    data = settings.save(save)
+    return {k: data[key] for k, (key, _) in UI_PREFS.items()}
 
 
 @app.put("/api/settings")
 def settings_put(patch: dict = Body(...)):
     # движок меняется только через /api/zapret/engine: там служба и списки переносятся как надо
-    patch = {k: v for k, v in patch.items() if k not in ("engine", "strategies", "ui_theme")}
+    patch = {k: v for k, v in patch.items() if k not in ("engine", "strategies") and not k.startswith("ui_")}
     if "zapret2_dir" in patch and not (isinstance(patch["zapret2_dir"], str) and patch["zapret2_dir"].strip()):
         raise HTTPException(400, "укажите папку zapret2")
     if "zapret2_dir" in patch and settings.engine() == "zapret2" and not (Path(patch["zapret2_dir"]) / "bin" / "winws2.exe").is_file():

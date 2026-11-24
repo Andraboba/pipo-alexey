@@ -107,3 +107,20 @@ for (const scale of ["1.25", "1.4"]) {
     await expectCardInView(page);
   });
 }
+
+test("Enter на «Пропустить» и «Назад» нажимает их, а не «Дальше»", async ({ page }) => {
+  await prepare(page, { tourDone: false });
+  await mockApi(page);
+  await page.goto("./#panel");
+  await expect(card(page)).toBeVisible();
+  await page.keyboard.press("Enter"); // фокус на карточке — Enter листает вперёд
+  await expect(card(page).locator(".tour-step")).toHaveText("2 из 13");
+  await page.keyboard.press("ArrowRight");
+  await expect(card(page).locator(".tour-step")).toHaveText("3 из 13");
+  await card(page).getByRole("button", { name: "Назад" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(card(page).locator(".tour-step")).toHaveText("2 из 13");
+  await card(page).getByRole("button", { name: "Пропустить" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(card(page)).toHaveCount(0);
+});

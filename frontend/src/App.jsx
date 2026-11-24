@@ -3,7 +3,7 @@ import { StoreProvider, useHashTab, useStore } from "./store.jsx";
 import TopBar from "./layout/TopBar.jsx";
 import Nav from "./layout/Nav.jsx";
 import Banners from "./layout/Banners.jsx";
-import Tour, { startTour, tourSeen } from "./ui/Tour.jsx";
+import Tour, { startTour, tourSeenAnywhere } from "./ui/Tour.jsx";
 import PanelPage from "./pages/panel/PanelPage.jsx";
 import SplitPage from "./pages/split/SplitPage.jsx";
 import GamesPage from "./pages/games/GamesPage.jsx";
@@ -59,7 +59,12 @@ function Shell() {
   });
   // первый запуск — гайд по вкладкам, как только есть что показывать
   const ready = !!status;
-  useEffect(() => { if (ready && !tourSeen()) startTour(); }, [ready]);
+  useEffect(() => {
+    if (!ready) return;
+    let live = true;
+    tourSeenAnywhere().then((seen) => { if (live && !seen) startTour(); });
+    return () => { live = false; };
+  }, [ready]);
   return (
     <>
       <div className="app-header" ref={headerRef}>

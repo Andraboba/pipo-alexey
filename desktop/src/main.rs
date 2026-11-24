@@ -58,13 +58,14 @@ fn main() {
             std::thread::spawn(move || {
                 match backend.wait_ready(Duration::from_secs(30)) {
                     // shell=tauri — страница знает, что крестик прячет её в трей
-                    Ok(()) => match Url::parse(&format!("{}/?shell=tauri", backend.base)) {
+                    Ok(()) => match Url::parse(&format!("{}/?shell=tauri", backend.base())) {
                         Ok(url) => {
                             let _ = window.navigate(url);
                         }
                         Err(e) => show_error(&window, &e.to_string(), &backend.log_path().display().to_string()),
                     },
                     Err(e) => {
+                        backend.dead.store(true, Ordering::SeqCst);
                         show_error(&window, &e, &backend.log_path().display().to_string());
                         return;
                     }
@@ -76,6 +77,7 @@ fn main() {
                         return;
                     }
                     if let Some(code) = backend.exited() {
+                        backend.dead.store(true, Ordering::SeqCst);
                         // встроенная заглушка: на Windows Tauri отдаёт свои файлы с http://tauri.localhost
                         if let Ok(url) = Url::parse("http://tauri.localhost/index.html") {
                             let _ = window.navigate(url);
@@ -83,7 +85,7 @@ fn main() {
                         std::thread::sleep(Duration::from_millis(800));
                         show_error(
                             &window,
-                            &format!("Сервер приложения остановился (код {code}) — перезапустите Пипо Алексея"),
+                            &format!("Сервер приложения остановился (код {code}) — закройте окно и запустите Пипо Алексея заново"),
                             &backend.log_path().display().to_string(),
                         );
                         return;
@@ -93,9 +95,10 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // крестик — в трей; служба запрета и прокси продолжают работать
+            // крестик — в трей; служба запрета и прокси продолжают работать.
+            // Сервер умер — прятать нечего: крестик закрывает программу, следующий запуск начнёт заново
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.app_handle().try_state::<Arc<Backend>>().is_some() {
+                if server_alive(window.app_handle()) {
                     api.prevent_close();
                     let _ = window.hide();
                 }
@@ -106,11 +109,16 @@ fn main() {
         .run(|app, event| {
             if let RunEvent::ExitRequested { code: None, api, .. } = event {
                 // окно спрятано, но приложение живёт в трее
-                if app.try_state::<Arc<Backend>>().is_some() {
+                if server_alive(app) {
                     api.prevent_exit();
                 }
             }
         });
+}
+
+/// Сервер запущен и не умер — значит, окно прячется в трей, а не закрывает программу.
+fn server_alive(app: &AppHandle) -> bool {
+    app.try_state::<Arc<Backend>>().is_some_and(|b| !b.dead.load(Ordering::SeqCst))
 }
 
 pub fn show_main(app: &AppHandle) {

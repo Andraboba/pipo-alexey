@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { adoptPref, pushPref } from "./uiPrefs.js";
 
 // Масштаб интерфейса задаёт пользователь в «Настройках»: от размера окна и монитора он не зависит
 // (системный масштаб Windows и так уже учтён). По умолчанию — 100%.
@@ -33,11 +34,13 @@ export function setScalePref(p) {
   pref = p;
   localStorage.setItem(KEY, p);
   apply();
+  pushPref({ scale: p });
 }
 
 // при изменении размера окна пересчитывается только --vh, сам масштаб тот же
 window.addEventListener("resize", apply);
 apply();
+adoptPref(KEY, "ui_scale", (v) => (SCALE_OPTIONS.some((o) => o.v === v) ? v : null), (v) => { pref = v; apply(); });
 
 const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
 const snapshot = () => pref + "|" + effectiveScale();

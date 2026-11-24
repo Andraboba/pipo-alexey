@@ -13,7 +13,10 @@ export default function LampMenu({ kind, anchor, onClose }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const outside = (e) => { if (!ref.current?.contains(e.target)) onClose(); };
+    // своя лампа — не «мимо»: повторный ПКМ по ней закрывает меню в TopBar, а не открывает заново
+    const outside = (e) => {
+      if (!ref.current?.contains(e.target) && !e.target.closest?.(`.lamp[data-kind="${kind}"]`)) onClose();
+    };
     const key = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("mousedown", outside);
     document.addEventListener("keydown", key);
@@ -24,7 +27,7 @@ export default function LampMenu({ kind, anchor, onClose }) {
       document.removeEventListener("keydown", key);
       window.removeEventListener("resize", onClose);
     };
-  }, [onClose]);
+  }, [onClose, kind]);
 
   const run = (fn, msg) => async () => {
     setBusy(true);

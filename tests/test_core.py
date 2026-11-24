@@ -451,6 +451,32 @@ class ApiGuardTests(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertEqual(json.loads((data / "settings.json").read_text(encoding="utf-8"))["ui_theme"], "light")
             self.assertEqual(self.call("/api/ui", h, "PUT", b'{"theme": "pink"}')[0], 400)
+            status, body = self.call("/api/ui", h, "PUT", json.dumps({"scale": "1.25", "tour_done": True}).encode())
+            self.assertEqual(json.loads(body), {"theme": "light", "scale": "1.25", "tour_done": True})
+            for bad in ({"scale": 1.25}, {"tour_done": 1}, {"zoom": "1"}):
+                self.assertEqual(self.call("/api/ui", h, "PUT", json.dumps(bad).encode())[0], 400, bad)
+
+
+class ShellPortTests(unittest.TestCase):
+    def test_busy_port_from_shell_exits_with_code(self):
+        """Порт от оболочки занят — сервер не уходит молча на соседний, а сообщает кодом 3 (оболочка выберет другой)."""
+        import os
+        import socket
+        import subprocess
+        import sys
+        import main
+        root = Path(__file__).resolve().parent.parent
+        data = Path(tempfile.mkdtemp(prefix="pipo-test-"))
+        self.addCleanup(shutil.rmtree, data, True)
+        with socket.socket() as busy:
+            busy.bind(("127.0.0.1", 0))
+            busy.listen()
+            port = busy.getsockname()[1]
+            env = {**os.environ, "PIPO_DATA_DIR": str(data), "PIPO_TOKEN": "t"}
+            r = subprocess.run([sys.executable, str(root / "main.py"), "--server-only", "--no-admin",
+                                "--port", str(port), "--parent-pid", str(os.getpid())],
+                               env=env, cwd=root, capture_output=True, timeout=60)
+        self.assertEqual(r.returncode, main.EXIT_PORT_BUSY, r.stderr.decode(errors="replace")[-500:])
 
 
 if __name__ == "__main__":

@@ -100,3 +100,26 @@ test("клик по лампе открывает вкладку, клик ми�
   await page.locator(".lamp-menu").getByRole("menuitem", { name: /Открыть вкладку/ }).click();
   await expect(page).toHaveURL(/#panel$/);
 });
+
+test("повторный ПКМ по той же лампе закрывает меню, по другой — открывает её меню", async ({ page }) => {
+  await prepare(page);
+  await mockApi(page);
+  await page.goto("./#panel");
+  const menu = page.locator(".lamp-menu");
+  await pill(page, "Запрет").click({ button: "right" });
+  await expect(menu).toHaveAttribute("aria-label", "Запрет");
+  await pill(page, "Прокси TG").click({ button: "right" });
+  await expect(menu).toHaveAttribute("aria-label", "Прокси Telegram");
+  await pill(page, "Прокси TG").click({ button: "right" });
+  await expect(menu).toHaveCount(0);
+});
+
+test("клик по лампе при открытом меню закрывает его и открывает вкладку", async ({ page }) => {
+  await prepare(page);
+  await mockApi(page);
+  await page.goto("./#split");
+  await pill(page, "Запрет").click({ button: "right" });
+  await pill(page, "Запрет").click();
+  await expect(page.locator(".lamp-menu")).toHaveCount(0);
+  await expect(page).toHaveURL(/#panel$/);
+});

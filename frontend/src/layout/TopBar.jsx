@@ -5,11 +5,12 @@ import { zapretView, tgView } from "../lib/status.js";
 import { cssRect } from "../lib/uiScale.js";
 import LampMenu from "./LampMenu.jsx";
 
-function LampPill({ label, view, to, kind, open, onMenu }) {
+function LampPill({ label, view, to, kind, open, onMenu, onClose }) {
   return (
     <button
       className={"lamp" + (open ? " open" : "")}
-      onClick={() => go(to)}
+      data-kind={kind}
+      onClick={() => { onClose(); go(to); }}
       onContextMenu={(e) => { e.preventDefault(); onMenu(kind, cssRect(e.currentTarget)); }}
       title="Клик — открыть вкладку, правая кнопка — включить или выключить"
       aria-haspopup="menu"
@@ -36,8 +37,8 @@ export default function TopBar() {
       </div>
       {status && (
         <div className="lamps" data-tour="lamps">
-          <LampPill label="Запрет" kind="zapret" view={zapretView(status.zapret)} to="panel" open={menu?.kind === "zapret"} onMenu={onMenu} />
-          <LampPill label="Прокси TG" kind="tg" view={tgView(status.tg)} to="telegram" open={menu?.kind === "tg"} onMenu={onMenu} />
+          <LampPill label="Запрет" kind="zapret" view={zapretView(status.zapret)} to="panel" open={menu?.kind === "zapret"} onMenu={onMenu} onClose={close} />
+          <LampPill label="Прокси TG" kind="tg" view={tgView(status.tg)} to="telegram" open={menu?.kind === "tg"} onMenu={onMenu} onClose={close} />
         </div>
       )}
       {hasUpdate && <button className="update-pill" onClick={() => go("updates")}>Есть обновление</button>}

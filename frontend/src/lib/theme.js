@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { put } from "./api.js";
+import { adoptPref, pushPref } from "./uiPrefs.js";
 
 // Тема: как в системе (по умолчанию), тёмная или светлая. На <html> всегда стоит итоговая
 // data-theme="dark" | "light" — светлая палитра в tokens.css описана один раз.
@@ -13,8 +13,10 @@ export const THEME_OPTIONS = [
 
 const media = window.matchMedia("(prefers-color-scheme: light)");
 const listeners = new Set();
+const valid = (v) => THEME_OPTIONS.some((o) => o.v === v);
+// в окне Tauri тему из data\settings.json оболочка передаёт ещё до загрузки — без мигания
 const saved = localStorage.getItem(KEY);
-let pref = THEME_OPTIONS.some((o) => o.v === saved) ? saved : "system";
+let pref = valid(saved) ? saved : valid(window.__PIPO_THEME) ? window.__PIPO_THEME : "system";
 
 export const resolvedTheme = () => (pref === "system" ? (media.matches ? "light" : "dark") : pref);
 
@@ -23,20 +25,17 @@ function apply() {
   listeners.forEach((l) => l());
 }
 
-/** Копия выбора на сервере (data\settings.json): окно-оболочка красит заглушку загрузки ещё до старта сервера. */
-const saveForShell = () => put("/api/ui", { theme: pref }).catch(() => { /* не критично: заглушка будет как в системе */ });
-
 export function setThemePref(p) {
   pref = p;
   localStorage.setItem(KEY, p);
   apply();
-  saveForShell();
+  pushPref({ theme: p }); // копия для заглушки оболочки и для страницы на другом адресе
 }
 
 // сменили тему Windows — «как в системе» переключается сразу, без перезапуска
 media.addEventListener("change", apply);
 apply();
-saveForShell(); // выбор, сделанный до появления этой копии, тоже должен дойти до оболочки
+adoptPref(KEY, "ui_theme", (v) => (valid(v) ? v : null), (v) => { pref = v; apply(); });
 
 const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
 

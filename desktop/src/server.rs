@@ -4,6 +4,7 @@
 //! токен придумывает оболочка и передаёт серверу через PIPO_TOKEN.
 
 use std::net::TcpListener;
+use std::os::windows::io::AsRawHandle;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
@@ -16,38 +17,45 @@ use serde_json::Value;
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 /// Тот же порт, что раньше: у страницы постоянный адрес, и её localStorage (масштаб, пройденный гайд) не теряется.
 const PREFERRED_PORT: u16 = 47800;
+/// Код выхода сервера «порт, который дала оболочка, уже занят» — тогда пробуем другой (main.py).
+const EXIT_PORT_BUSY: i32 = 3;
 
 #[cfg(not(debug_assertions))]
 static SERVER_EXE: &[u8] = include_bytes!(env!("PIPO_SERVER_EXE"));
 
 pub struct Backend {
-    pub base: String,
     token: String,
     pub data_dir: PathBuf,
+    /// адрес и процесс меняются, если сервер пришлось перезапустить на другом порту
+    base: Mutex<String>,
     child: Mutex<Child>,
+    /// все процессы сервера: pipo-server.exe из PyInstaller — это загрузчик, Python работает в его дочернем процессе
+    job: Job,
     /// выходим по команде из трея — смерть сервера не ошибка
     pub quitting: AtomicBool,
+    /// сервер умер или не поднялся: окно больше не прячется в трей, крестик закрывает программу
+    pub dead: AtomicBool,
 }
 
 impl Backend {
     pub fn start() -> Result<Self, String> {
-        let (mut cmd, data_dir) = server_command()?;
+        let data_dir = data_dir();
         std::fs::create_dir_all(&data_dir).map_err(|e| format!("не удалось создать {}: {e}", data_dir.display()))?;
         let token = random_token();
-        let port = free_port();
-        cmd.args(["--server-only", "--no-admin", "--port", &port.to_string()])
-            .args(["--parent-pid", &std::process::id().to_string()])
-            .env("PIPO_TOKEN", &token)
-            .env("PIPO_DATA_DIR", &data_dir)
-            .creation_flags(CREATE_NO_WINDOW);
-        let child = cmd.spawn().map_err(|e| format!("не удалось запустить сервер: {e}"))?;
+        let (base, child, job) = spawn(&token, &data_dir)?;
         Ok(Self {
-            base: format!("http://127.0.0.1:{port}"),
             token,
             data_dir,
+            base: Mutex::new(base),
             child: Mutex::new(child),
+            job,
             quitting: AtomicBool::new(false),
+            dead: AtomicBool::new(false),
         })
+    }
+
+    pub fn base(&self) -> String {
+        self.base.lock().unwrap().clone()
     }
 
     pub fn log_path(&self) -> PathBuf {
@@ -62,11 +70,22 @@ impl Backend {
         }
     }
 
+    /// Ждать, пока сервер ответит. Порт успели занять между проверкой и запуском — перезапуск на другом.
     pub fn wait_ready(&self, timeout: Duration) -> Result<(), String> {
         let end = Instant::now() + timeout;
+        let mut retries = 0;
         while Instant::now() < end {
-            if let Some(code) = self.exited() {
-                return Err(format!("Сервер завершился при запуске (код {code})"));
+            match self.exited() {
+                Some(EXIT_PORT_BUSY) if retries < 5 => {
+                    retries += 1;
+                    let (base, child, job) = spawn(&self.token, &self.data_dir)?;
+                    *self.base.lock().unwrap() = base;
+                    *self.child.lock().unwrap() = child;
+                    self.job.adopt(job);
+                    continue;
+                }
+                Some(code) => return Err(format!("Сервер завершился при запуске (код {code})")),
+                None => {}
             }
             if self.get("/api/status").is_ok() {
                 return Ok(());
@@ -77,11 +96,11 @@ impl Backend {
     }
 
     pub fn get(&self, path: &str) -> Result<Value, String> {
-        self.call(ureq::get(&format!("{}{path}", self.base)).timeout(Duration::from_secs(10)))
+        self.call(ureq::get(&format!("{}{path}", self.base())).timeout(Duration::from_secs(10)))
     }
 
     pub fn post(&self, path: &str) -> Result<Value, String> {
-        let req = ureq::post(&format!("{}{path}", self.base)).timeout(Duration::from_secs(60));
+        let req = ureq::post(&format!("{}{path}", self.base())).timeout(Duration::from_secs(60));
         let req = req.set("X-Pipo-Token", &self.token);
         match req.send_json(serde_json::json!({})) {
             Ok(r) => r.into_json().map_err(|e| e.to_string()),
@@ -97,7 +116,7 @@ impl Backend {
     }
 
     /// Выход: сервер останавливает фоновую задачу (она возвращает запрет как было) и завершается сам.
-    /// Не уложился — добиваем; незаконченный подбор вернёт запрет при следующем запуске.
+    /// Не уложился — завершаем все его процессы; незаконченный подбор вернёт запрет при следующем запуске.
     pub fn shutdown(&self) {
         self.quitting.store(true, Ordering::SeqCst);
         if self.exited().is_none() {
@@ -107,10 +126,89 @@ impl Backend {
                 std::thread::sleep(Duration::from_millis(200));
             }
         }
+        // загрузчик PyInstaller мог выйти, а Python под ним — нет: добиваем всё задание целиком
+        self.job.terminate();
         let mut child = self.child.lock().unwrap();
         if child.try_wait().ok().flatten().is_none() {
             let _ = child.kill();
             let _ = child.wait();
+        }
+    }
+}
+
+/// Запустить сервер на свободном порту и сразу поместить в задание вместе с будущими дочерними процессами.
+fn spawn(token: &str, data_dir: &Path) -> Result<(String, Child, Job), String> {
+    let mut cmd = server_command()?;
+    let port = free_port();
+    cmd.args(["--server-only", "--no-admin", "--port", &port.to_string()])
+        .args(["--parent-pid", &std::process::id().to_string()])
+        .env("PIPO_TOKEN", token)
+        .env("PIPO_DATA_DIR", data_dir)
+        .creation_flags(CREATE_NO_WINDOW);
+    let child = cmd.spawn().map_err(|e| format!("не удалось запустить сервер: {e}"))?;
+    let job = Job::new();
+    job.assign(&child);
+    Ok((format!("http://127.0.0.1:{port}"), child, job))
+}
+
+/// Объект задания Windows: TerminateJobObject завершает все процессы сервера разом.
+/// Без KILL_ON_JOB_CLOSE — если оболочка упадёт, сервер сам заметит это и выйдет мягко (--parent-pid).
+/// BREAKAWAY_OK — программы, которые сервер запускает для пользователя (прокси Telegram), могут выйти из задания.
+pub struct Job(Mutex<isize>);
+
+impl Job {
+    pub fn new() -> Self {
+        use windows_sys::Win32::System::JobObjects::*;
+        unsafe {
+            let h = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+            if !h.is_null() {
+                let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
+                info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_BREAKAWAY_OK;
+                SetInformationJobObject(
+                    h,
+                    JobObjectExtendedLimitInformation,
+                    &info as *const _ as *const _,
+                    std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                );
+            }
+            Self(Mutex::new(h as isize))
+        }
+    }
+
+    pub fn assign(&self, child: &Child) {
+        let h = *self.0.lock().unwrap();
+        if h != 0 {
+            unsafe {
+                windows_sys::Win32::System::JobObjects::AssignProcessToJobObject(h as _, child.as_raw_handle() as _);
+            }
+        }
+    }
+
+    /// Взять задание нового запуска сервера вместо старого.
+    fn adopt(&self, other: Job) {
+        let mut mine = self.0.lock().unwrap();
+        let mut theirs = other.0.lock().unwrap();
+        std::mem::swap(&mut *mine, &mut *theirs);
+        // other закроет старое задание в Drop
+    }
+
+    pub fn terminate(&self) {
+        let h = *self.0.lock().unwrap();
+        if h != 0 {
+            unsafe {
+                windows_sys::Win32::System::JobObjects::TerminateJobObject(h as _, 1);
+            }
+        }
+    }
+}
+
+impl Drop for Job {
+    fn drop(&mut self) {
+        let h = *self.0.lock().unwrap();
+        if h != 0 {
+            unsafe {
+                windows_sys::Win32::Foundation::CloseHandle(h as _);
+            }
         }
     }
 }
@@ -159,19 +257,19 @@ pub fn saved_theme() -> &'static str {
 
 /// Отладка (`cargo run`): сервер из исходников — python из .venv репозитория.
 #[cfg(debug_assertions)]
-fn server_command() -> Result<(Command, PathBuf), String> {
+fn server_command() -> Result<Command, String> {
     let _ = exe_dir;
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let python = repo.join(".venv").join("Scripts").join("python.exe");
     let mut cmd = Command::new(&python);
     cmd.arg(repo.join("main.py")).current_dir(&repo);
-    Ok((cmd, data_dir()))
+    Ok(cmd)
 }
 
 /// Релиз: вшитый pipo-server.exe распаковывается в data\runtime рядом с PipoAlexey.exe
 /// (переписывается, только если изменился).
 #[cfg(not(debug_assertions))]
-fn server_command() -> Result<(Command, PathBuf), String> {
+fn server_command() -> Result<Command, String> {
     let data = data_dir();
     let dir = data.join("runtime");
     let exe = dir.join("pipo-server.exe");
@@ -186,7 +284,7 @@ fn server_command() -> Result<(Command, PathBuf), String> {
     }
     let mut cmd = Command::new(&exe);
     cmd.current_dir(&dir);
-    Ok((cmd, data))
+    Ok(cmd)
 }
 
 fn free_port() -> u16 {
@@ -205,4 +303,38 @@ fn random_token() -> String {
     let mut buf = [0u8; 24];
     getrandom::fill(&mut buf).expect("системный генератор случайных чисел недоступен");
     buf.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Задание завершает и внуков: так и устроен pipo-server.exe (загрузчик → Python).
+    #[test]
+    fn job_terminates_grandchildren() {
+        let marker = format!("pipo-job-test-{}", std::process::id());
+        // cmd → ping: ping — «внук», как Python под загрузчиком PyInstaller
+        let child = Command::new("cmd")
+            .args(["/c", &format!("title {marker} & ping -n 30 127.0.0.1 >nul")])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .unwrap();
+        let job = Job::new();
+        job.assign(&child);
+        std::thread::sleep(Duration::from_millis(500));
+        let pings = || {
+            let out = Command::new("powershell")
+                .args(["-NoProfile", "-Command", &format!(
+                    "@(Get-CimInstance Win32_Process | Where-Object {{ $_.Name -eq 'PING.EXE' -and $_.ParentProcessId -eq {} }}).Count",
+                    child.id()
+                )])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().parse::<u32>().unwrap_or(0)
+        };
+        assert_eq!(pings(), 1, "ping должен работать внутри задания");
+        job.terminate();
+        std::thread::sleep(Duration::from_millis(500));
+        assert_eq!(pings(), 0, "после terminate внуков не остаётся");
+    }
 }

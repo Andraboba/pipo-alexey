@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { go } from "../store.jsx";
 import { cssRect, cssViewport } from "../lib/uiScale.js";
 import { IN_TRAY_SHELL } from "../lib/shell.js";
+import { adoptPref, pushPref } from "../lib/uiPrefs.js";
 import "../styles/tour.css";
 
 // Гайд для первого запуска: проходит по вкладкам, подсвечивает пункт меню и главное на странице.
@@ -87,6 +88,9 @@ const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); }
 
 export const startTour = () => setOpen(true);
 export const tourSeen = () => localStorage.getItem(DONE_KEY) === "1";
+/** Первый запуск — только если гайд не пройден ни здесь, ни на сервере (страница на другом адресе или в другом окне). */
+export const tourSeenAnywhere = () =>
+  adoptPref(DONE_KEY, "ui_tour_done", (v) => (v === true ? "1" : null), () => {}).then(tourSeen);
 export const useTourOpen = () => useSyncExternalStore(subscribe, () => open);
 
 const PAD = 6;
@@ -125,6 +129,7 @@ export default function Tour() {
 
   const finish = useCallback(() => {
     localStorage.setItem(DONE_KEY, "1");
+    pushPref({ tour_done: true });
     setOpen(false);
     setI(0);
     go("panel");
@@ -172,7 +177,11 @@ export default function Tour() {
     if (!isOpen) return;
     const key = (e) => {
       if (e.key === "Escape") finish();
-      else if (e.key === "ArrowRight" || e.key === "Enter") { e.preventDefault(); i < STEPS.length - 1 ? setI(i + 1) : finish(); }
+      // Enter на кнопке «Пропустить» или «Назад» нажимает её саму, а не «Дальше»
+      else if (e.key === "ArrowRight" || (e.key === "Enter" && !e.target.closest?.("button"))) {
+        e.preventDefault();
+        i < STEPS.length - 1 ? setI(i + 1) : finish();
+      }
       else if (e.key === "ArrowLeft" && i > 0) setI(i - 1);
     };
     window.addEventListener("keydown", key);

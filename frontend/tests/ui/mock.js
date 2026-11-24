@@ -28,6 +28,11 @@ export async function mockApi(page, overrides = {}) {
       case "/api/tg/start":
         Object.assign(st.tg, { running: true, listening: true });
         return reply(st.tg);
+      case "/api/ui": {
+        const keys = { theme: "ui_theme", scale: "ui_scale", tour_done: "ui_tour_done" };
+        for (const [k, v] of Object.entries(req.postDataJSON())) state["/api/settings"][keys[k]] = v;
+        return reply({ ok: true });
+      }
       case "/api/tg/stop":
         Object.assign(st.tg, { running: false, listening: false });
         return reply(st.tg);

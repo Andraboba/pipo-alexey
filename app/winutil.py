@@ -64,6 +64,10 @@ def kill_process(image: str, force: bool = True) -> None:
     run(args)
 
 
+DETACHED_PROCESS = 0x00000008
+CREATE_BREAKAWAY_FROM_JOB = 0x01000000
+
+
 def launch_unelevated(exe: Path) -> None:
     """Запуск GUI-программы от обычного пользователя, даже если мы под админом.
 
@@ -73,7 +77,12 @@ def launch_unelevated(exe: Path) -> None:
     if is_admin():
         subprocess.Popen(["explorer.exe", str(exe)], creationflags=CREATE_NO_WINDOW)
     else:
-        subprocess.Popen([str(exe)], cwd=str(exe.parent), creationflags=0x00000008)  # DETACHED_PROCESS
+        # прокси живёт сам по себе: выходим из задания окна-оболочки, иначе «Выход» с принудительной
+        # остановкой сервера закрыл бы и его. Если задание выход не разрешает — запускаем как есть
+        try:
+            subprocess.Popen([str(exe)], cwd=str(exe.parent), creationflags=DETACHED_PROCESS | CREATE_BREAKAWAY_FROM_JOB)
+        except OSError:
+            subprocess.Popen([str(exe)], cwd=str(exe.parent), creationflags=DETACHED_PROCESS)
 
 
 def open_url_unelevated(url: str) -> None:

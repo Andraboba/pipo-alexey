@@ -3,8 +3,9 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/layout.css";
 import "./styles/controls.css";
-// масштаб применяется до первой отрисовки, чтобы окно не «прыгало»
+// масштаб и тема применяются до первой отрисовки, чтобы окно не «прыгало»
 import "./lib/uiScale.js";
+import "./lib/theme.js";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

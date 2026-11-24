@@ -3,6 +3,7 @@ import { get, put } from "../../lib/api.js";
 import { useStore } from "../../store.jsx";
 import { Button, Seg } from "../../ui/controls.jsx";
 import { SCALE_OPTIONS, useUiScale } from "../../lib/uiScale.js";
+import { THEME_OPTIONS, useTheme } from "../../lib/theme.js";
 import { startTour } from "../../ui/Tour.jsx";
 import { useToast } from "../../ui/Toasts.jsx";
 
@@ -13,6 +14,7 @@ export default function SettingsPage() {
   const [tgExe, setTgExe] = useState("");
   const [z2dir, setZ2dir] = useState("");
   const [scalePref, , setScale] = useUiScale();
+  const [themePref, theme, setTheme] = useTheme();
 
   useEffect(() => {
     get("/api/settings").then((s) => { setZdir(s.zapret_dir || ""); setZ2dir(s.zapret2_dir || ""); setTgExe(s.tg_exe || ""); }).catch((e) => toast(e.message, true));
@@ -43,6 +45,13 @@ export default function SettingsPage() {
         }}>Сохранить</Button>
       </form>
       <div className="card stack" data-tour="tour">
+        <div className="field">
+          <div className="field-label">Тема</div>
+          <Seg value={themePref} onChange={setTheme} options={THEME_OPTIONS} />
+          <p className="hint" style={{ marginBottom: 0 }}>
+            {themePref === "system" ? `Как в Windows — сейчас ${theme === "light" ? "светлая" : "тёмная"}` : "Не зависит от темы Windows"}
+          </p>
+        </div>
         <div className="field">
           <div className="field-label">Масштаб интерфейса</div>
           <Seg value={scalePref} onChange={setScale} options={SCALE_OPTIONS} />

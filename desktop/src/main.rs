@@ -29,6 +29,11 @@ fn main() {
                 .background_color(Color(0x14, 0x14, 0x15, 0xff))
                 .center()
                 .build()?;
+            // Первый показ окна Windows берёт из STARTUPINFO запустившего процесса: из IDE, планировщика
+            // или ярлыка «свёрнуто» окно может остаться скрытым. Второй показ выполняется как есть.
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
 
             let backend = match Backend::start() {
                 Ok(b) => Arc::new(b),

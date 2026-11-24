@@ -26,15 +26,14 @@
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #fafafa; --sunk: #f4f4f5; --panel: #ffffff; --raised: #f4f4f5;
-    --line: rgba(23, 23, 23, .08); --line-2: rgba(23, 23, 23, .14);
-    --text: #171717; --muted: #525252; --faint: #737373;
-    --btn: #171717; --btn-ink: #ffffff;
-    --amber: #a86b00; --amber-soft: rgba(201, 138, 15, .12);
-    --teal: #13756f; --teal-soft: rgba(27, 143, 136, .1);
-    --green: #16a34a; --red: #dc2626; --red-soft: rgba(220, 38, 38, .07);
-    color-scheme: light;
-  }
+/* светлая тема: data-theme ставит lib/theme.js — по системе или по выбору в «Настройках» */
+:root[data-theme="light"] {
+  --bg: #fafafa; --sunk: #f4f4f5; --panel: #ffffff; --raised: #f4f4f5;
+  --line: rgba(23, 23, 23, .08); --line-2: rgba(23, 23, 23, .14);
+  --text: #171717; --muted: #525252; --faint: #737373;
+  --btn: #171717; --btn-ink: #ffffff;
+  --amber: #a86b00; --amber-soft: rgba(201, 138, 15, .12);
+  --teal: #13756f; --teal-soft: rgba(27, 143, 136, .1);
+  --green: #16a34a; --red: #dc2626; --red-soft: rgba(220, 38, 38, .07);
+  color-scheme: light;
 }

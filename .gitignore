@@ -2,6 +2,9 @@
 .idea/
 __pycache__/
 frontend/node_modules/
+# отчёты UI-тестов (Playwright)
+frontend/test-results/
+frontend/playwright-report/
 # сборка фронта (собирается build_exe.bat / start.bat)
 web/dist/
 # артефакты PyInstaller

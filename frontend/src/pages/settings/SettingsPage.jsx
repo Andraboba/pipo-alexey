@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const [zdir, setZdir] = useState("");
   const [tgExe, setTgExe] = useState("");
   const [z2dir, setZ2dir] = useState("");
-  const [scalePref, scale, setScale] = useUiScale();
+  const [scalePref, , setScale] = useUiScale();
 
   useEffect(() => {
     get("/api/settings").then((s) => { setZdir(s.zapret_dir || ""); setZ2dir(s.zapret2_dir || ""); setTgExe(s.tg_exe || ""); }).catch((e) => toast(e.message, true));
@@ -47,9 +47,7 @@ export default function SettingsPage() {
           <div className="field-label">Масштаб интерфейса</div>
           <Seg value={scalePref} onChange={setScale} options={SCALE_OPTIONS} />
           <p className="hint" style={{ marginBottom: 0 }}>
-            {scalePref === "auto"
-              ? `Подстраивается под размер окна: сейчас ${Math.round(scale * 100)}%. На весь экран всё становится крупнее`
-              : "Одинаковый при любом размере окна"}
+            Если текст кажется мелким или крупным на вашем мониторе. Системный масштаб Windows уже учтён
           </p>
         </div>
         <div className="field">

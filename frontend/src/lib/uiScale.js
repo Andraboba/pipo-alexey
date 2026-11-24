@@ -1,11 +1,10 @@
 import { useSyncExternalStore } from "react";
 
-// Масштаб интерфейса: на большом окне (полный экран 1080p, 2K) всё крупнее, чтобы не было
-// мелкого текста посреди пустого поля. «Авто» считается от ширины окна, остальные — вручную.
+// Масштаб интерфейса задаёт пользователь в «Настройках»: от размера окна и монитора он не зависит
+// (системный масштаб Windows и так уже учтён). По умолчанию — 100%.
 const KEY = "uiScale";
 
 export const SCALE_OPTIONS = [
-  { v: "auto", label: "Авто" },
   { v: "0.9", label: "90%" },
   { v: "1", label: "100%" },
   { v: "1.1", label: "110%" },
@@ -13,19 +12,13 @@ export const SCALE_OPTIONS = [
   { v: "1.4", label: "140%" },
 ];
 
-/** Ширина окна в CSS-пикселях → масштаб. Окно по умолчанию (1360) остаётся как было. */
-export function autoScale(width) {
-  if (width < 1600) return 1;
-  if (width < 2000) return 1.1;
-  if (width < 2400) return 1.2;
-  return 1.3;
-}
-
 const listeners = new Set();
-let pref = localStorage.getItem(KEY) || "auto";
+// «auto» осталось от прошлой версии — теперь это просто 100%
+const saved = localStorage.getItem(KEY);
+let pref = SCALE_OPTIONS.some((o) => o.v === saved) ? saved : "1";
 
 export function effectiveScale(p = pref) {
-  return p === "auto" ? autoScale(window.innerWidth) : Number(p) || 1;
+  return Number(p) || 1;
 }
 
 function apply() {
@@ -42,6 +35,7 @@ export function setScalePref(p) {
   apply();
 }
 
+// при изменении размера окна пересчитывается только --vh, сам масштаб тот же
 window.addEventListener("resize", apply);
 apply();
 
@@ -61,7 +55,18 @@ export function cssRect(el) {
   return { left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z, width: r.width / z, height: r.height / z };
 }
 
-/** Размер окна в тех же координатах. */
+let viewportProbe = null;
+
+/** Размер окна (без полосы прокрутки) в тех же координатах. clientWidth под zoom не годится:
+ *  он не масштабируется, а getBoundingClientRect — масштабируется. Поэтому меряем так же, как элементы. */
 export function cssViewport() {
-  return { width: document.documentElement.clientWidth, height: window.innerHeight / effectiveScale() };
+  if (!viewportProbe?.isConnected) {
+    viewportProbe = document.createElement("div");
+    viewportProbe.style.cssText = "position:fixed;inset:0;visibility:hidden;pointer-events:none";
+    viewportProbe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(viewportProbe);
+  }
+  const z = effectiveScale();
+  const r = viewportProbe.getBoundingClientRect();
+  return { width: r.width / z, height: r.height / z };
 }

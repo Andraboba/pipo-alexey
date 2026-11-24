@@ -1,0 +1,1978 @@
+{
+ "/api/status": {
+  "version": "0.3.0",
+  "admin": true,
+  "zapret": {
+   "engine": "zapret2",
+   "engine_title": "zapret2 · kinlay0",
+   "exe": "winws2.exe",
+   "engines": [
+    {
+     "id": "flowseal",
+     "title": "zapret · Flowseal",
+     "exe": "winws.exe",
+     "repo": "Flowseal/zapret-discord-youtube",
+     "dir": "C:\\Zapret",
+     "exists": true,
+     "version": "1.10.4"
+    },
+    {
+     "id": "zapret2",
+     "title": "zapret2 · kinlay0",
+     "exe": "winws2.exe",
+     "repo": "kinlay0/zapret2-discord-youtube-strats",
+     "dir": "C:\\Zapret2",
+     "exists": true,
+     "version": "1.1.5"
+    }
+   ],
+   "dir": "C:\\Zapret2",
+   "exists": true,
+   "version": "1.1.5",
+   "service": "stopped",
+   "strategy": "general (PIPO EVO 1)",
+   "autostart": false,
+   "winws_running": false,
+   "strategies": [
+    "general (ALT14)",
+    "general (LEGACY)",
+    "general (PIPO EVO 1)",
+    "general (SIMPLE FAKE)"
+   ],
+   "game_filter": {
+    "mode": "all",
+    "tcp": "1024-65535",
+    "udp": "1024-65535"
+   },
+   "ipset_mode": "loaded"
+  },
+  "tg": {
+   "installed": true,
+   "exe": "C:\\Zapret\\TgWsProxy.exe",
+   "version": "v1.12.0",
+   "running": false,
+   "listening": false,
+   "host": "127.0.0.1",
+   "port": 1443,
+   "link": "tg://proxy?server=127.0.0.1&port=1443&secret=dd00000000000000000000000000000000",
+   "autostart": false,
+   "config_dir": "C:\\Users\\user\\AppData\\Roaming\\TgWsProxy"
+  },
+  "job": null
+ },
+ "/api/split": {
+  "rules": [],
+  "profiles": [
+   {
+    "name": "iRacing",
+    "slug": "iracing",
+    "route": "zapret",
+    "note": "",
+    "created_by_app": false,
+    "domains": [
+     "iracing.com"
+    ],
+    "asns": [
+     397127,
+     398123
+    ],
+    "preset": "iracing",
+    "id": "871cabf781",
+    "networks": [
+     "1.178.8.0/24",
+     "1.178.10.0/23",
+     "1.178.64.0/24"
+    ],
+    "total": 341,
+    "asn_counts": {
+     "397127": 2,
+     "398123": 6
+    },
+    "file": "ipset-iracing.txt",
+    "covered_by_base": 322
+   },
+   {
+    "name": "Apex Legends",
+    "slug": "apex-2",
+    "route": "zapret",
+    "note": "",
+    "created_by_app": true,
+    "domains": [
+     "ea.com",
+     "origin.com",
+     "respawn.com",
+     "tnt-ea.com"
+    ],
+    "asns": [
+     35028
+    ],
+    "preset": "apex",
+    "id": "07cd0cab19",
+    "networks": [],
+    "total": 7,
+    "asn_counts": {
+     "35028": 7
+    },
+    "file": "ipset-apex-2.txt",
+    "covered_by_base": 0
+   }
+  ],
+  "base_size": 33336,
+  "applied_at": 1795435280.732822
+ },
+ "/api/updates": {
+  "zapret": {
+   "local": "1.10.4",
+   "installed": true,
+   "dir": "C:\\Zapret",
+   "repo": "Flowseal/zapret-discord-youtube",
+   "latest": "1.10.4",
+   "newer": false,
+   "published": "2026-10-20T04:44:59Z",
+   "page": "https://github.com/Flowseal/zapret-discord-youtube/releases/tag/1.10.4",
+   "notes": "Исправления"
+  },
+  "zapret2": {
+   "local": "1.1.5",
+   "installed": true,
+   "dir": "C:\\Zapret2",
+   "repo": "kinlay0/zapret2-discord-youtube-strats",
+   "latest": "1.1.5",
+   "newer": false,
+   "published": "2026-11-18T12:51:24Z",
+   "page": "https://github.com/kinlay0/zapret2-discord-youtube-strats/releases/tag/1.1.5",
+   "notes": "Исправления"
+  },
+  "tg": {
+   "local": "v1.12.0",
+   "installed": true,
+   "latest": "v1.12.0",
+   "newer": false,
+   "published": "2026-11-23T09:29:33Z",
+   "page": "https://github.com/Flowseal/tg-ws-proxy/releases/tag/v1.12.0",
+   "notes": "Исправления"
+  },
+  "checked_at": 1795547437.5546653
+ },
+ "/api/settings": {
+  "zapret_dir": "C:\\Zapret",
+  "zapret2_dir": "C:\\Zapret2",
+  "engine": "zapret2",
+  "strategies": {
+   "flowseal": "general",
+   "zapret2": "general (PIPO EVO 1)"
+  },
+  "tg_exe": null
+ },
+ "/api/scan/targets": {
+  "targets": [
+   {
+    "id": "ft-DiscordMain",
+    "name": "DiscordMain",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://discord.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordGateway",
+    "name": "DiscordGateway",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://gateway.discord.gg",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordCDN",
+    "name": "DiscordCDN",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://cdn.discordapp.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordUpdates",
+    "name": "DiscordUpdates",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://updates.discord.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   }
+  ],
+  "strategies": [
+   "general (ALT14)",
+   "general (LEGACY)",
+   "general (PIPO EVO 1)",
+   "general (SIMPLE FAKE)"
+  ],
+  "current": "general (PIPO EVO 1)",
+  "last": null
+ },
+ "/api/presets": [
+  {
+   "id": "iracing",
+   "name": "iRacing",
+   "confidence": "high",
+   "default_route": "zapret",
+   "probe": [
+    "members-ng.iracing.com",
+    "www.iracing.com"
+   ],
+   "domains": [
+    "iracing.com"
+   ],
+   "asns": [
+    {
+     "asn": 397127,
+     "holder": "iRacing.com Motorsport Simulations"
+    },
+    {
+     "asn": 398123,
+     "holder": "iRacing.com Motorsport Simulations (corporate)"
+    }
+   ],
+   "note": "Свои ASN iRacing плюс 333 подсети серверов из lists/ipset-iracing.txt (AWS)",
+   "added": true
+  },
+  {
+   "id": "apex",
+   "name": "Apex Legends",
+   "confidence": "medium",
+   "default_route": "direct",
+   "probe": [
+    "www.ea.com",
+    "accounts.ea.com",
+    "www.respawn.com"
+   ],
+   "domains": [
+    "ea.com",
+    "origin.com",
+    "respawn.com",
+    "tnt-ea.com"
+   ],
+   "asns": [
+    {
+     "asn": 35028,
+     "holder": "Multiplay (Unity)"
+    }
+   ],
+   "note": "Сервера Multiplay; часть матчей идёт через AWS и Google Cloud. Через запрет может ломаться вход в аккаунт EA",
+   "added": true
+  },
+  {
+   "id": "valve",
+   "name": "Counter-Strike 2 / Dota 2",
+   "confidence": "high",
+   "default_route": "zapret",
+   "probe": [
+    "store.steampowered.com",
+    "steamcommunity.com",
+    "cdn.cloudflare.steamstatic.com"
+   ],
+   "domains": [
+    "steampowered.com",
+    "steamcommunity.com",
+    "steamstatic.com",
+    "steamcontent.com",
+    "steamserver.net",
+    "valvesoftware.com",
+    "steam-chat.com"
+   ],
+   "asns": [
+    {
+     "asn": 32590,
+     "holder": "Valve Corporation"
+    }
+   ],
+   "note": "Игровые сервера и Steam Datagram Relay Valve",
+   "added": false
+  },
+  {
+   "id": "riot",
+   "name": "Valorant / League of Legends",
+   "confidence": "high",
+   "default_route": "zapret",
+   "probe": [
+    "auth.riotgames.com",
+    "playvalorant.com",
+    "www.leagueoflegends.com"
+   ],
+   "domains": [
+    "riotgames.com",
+    "leagueoflegends.com",
+    "playvalorant.com",
+    "pvp.net",
+    "riotcdn.net",
+    "lolstatic.com"
+   ],
+   "asns": [
+    {
+     "asn": 6507,
+     "holder": "Riot Games (Riot Direct)"
+    },
+    {
+     "asn": 62830,
+     "holder": "Riot Games (corporate)"
+    }
+   ],
+   "note": "Авторизация и pvp.net — за Cloudflare, их покрывают домены",
+   "added": false
+  }
+ ],
+ "/api/hosts": {
+  "status": {
+   "source": "geohide",
+   "sections": [],
+   "applied_at": null,
+   "hosts_path": "C:\\Windows\\System32\\drivers\\etc\\hosts",
+   "readable": true,
+   "in_hosts": 63,
+   "reverted": false,
+   "backup": "C:\\Pipo\\data\\hosts.bak"
+  },
+  "sources": {
+   "geohide": {
+    "name": "GeoHide DNS",
+    "url": "https://raw.githubusercontent.com/Internet-Helper/GeoHideDNS/refs/heads/main/hosts/hosts",
+    "page": "https://github.com/Internet-Helper/GeoHideDNS",
+    "updated": 1795423034.3319044,
+    "sections": [
+     {
+      "name": "Adobe AI",
+      "ai": true,
+      "count": 2,
+      "domains": [
+       "adobe.io",
+       "www.adobe.io"
+      ],
+      "ips": [
+       "159.194.200.33",
+       "193.233.112.67",
+       "193.233.112.68",
+       "193.233.112.88"
+      ]
+     },
+     {
+      "name": "Camel AI",
+      "ai": true,
+      "count": 3,
+      "domains": [
+       "camelai.com",
+       "www.camelai.com",
+       "stream.camelai.com"
+      ],
+      "ips": [
+       "159.194.200.33",
+       "193.233.112.67",
+       "193.233.112.68",
+       "193.233.112.88"
+      ]
+     },
+     {
+      "name": "Cerebras AI",
+      "ai": true,
+      "count": 3,
+      "domains": [
+       "api.cerebras.ai",
+       "cerebras.ai",
+       "www.cerebras.ai"
+      ],
+      "ips": [
+       "159.194.200.33",
+       "193.233.112.67",
+       "193.233.112.68",
+       "193.233.112.88"
+      ]
+     }
+    ]
+   },
+   "malw": {
+    "name": "dns.malw.link",
+    "url": "https://raw.githubusercontent.com/ImMALWARE/dns.malw.link/refs/heads/master/hosts",
+    "page": "https://github.com/ImMALWARE/dns.malw.link",
+    "updated": 1795423034.5264337,
+    "sections": [
+     {
+      "name": "DeepL",
+      "ai": true,
+      "count": 20,
+      "domains": [
+       "deepl.com",
+       "www.deepl.com",
+       "www2.deepl.com",
+       "login-wall.deepl.com",
+       "w.deepl.com",
+       "dict.deepl.com",
+       "ita-free.www.deepl.com",
+       "write-free.www.deepl.com",
+       "ita-free.app.deepl.com",
+       "shield.deepl.com",
+       "ott.deepl.com",
+       "api-free.deepl.com",
+       "backend.deepl.com",
+       "clearance.deepl.com",
+       "errortracking.deepl.com",
+       "auth.deepl.com",
+       "oneshot-free.www.deepl.com",
+       "checkout.www.deepl.com",
+       "gtm.deepl.com",
+       "voice-proxy.www.deepl.com"
+      ],
+      "ips": [
+       "217.60.179.6"
+      ]
+     },
+     {
+      "name": "ElevenLabs",
+      "ai": true,
+      "count": 5,
+      "domains": [
+       "elevenlabs.io",
+       "api.us.elevenlabs.io",
+       "elevenreader.io",
+       "api.elevenlabs.io",
+       "help.elevenlabs.io"
+      ],
+      "ips": [
+       "217.60.179.6"
+      ]
+     },
+     {
+      "name": "GitHub Copilot",
+      "ai": true,
+      "count": 3,
+      "domains": [
+       "api.github.com",
+       "api.individual.githubcopilot.com",
+       "proxy.individual.githubcopilot.com"
+      ],
+      "ips": [
+       "217.60.179.6"
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "/api/evolve": {
+  "engine": "zapret2",
+  "targets": [
+   {
+    "id": "ft-DiscordMain",
+    "name": "DiscordMain",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://discord.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordGateway",
+    "name": "DiscordGateway",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://gateway.discord.gg",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordCDN",
+    "name": "DiscordCDN",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://cdn.discordapp.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordUpdates",
+    "name": "DiscordUpdates",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://updates.discord.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   }
+  ],
+  "last": null,
+  "can_resume": false,
+  "current": "general (PIPO EVO 1)",
+  "imports": []
+ },
+ "/api/diag/dns": {
+  "verdict": "udp",
+  "blocked": [
+   "rutor.info",
+   "flibusta.is",
+   "rezka.ag",
+   "clubtone.do.am"
+  ],
+  "control": [
+   "vk.ru",
+   "gosuslugi.ru"
+  ],
+  "truth": {
+   "rutor.info": [
+    "193.46.255.29"
+   ],
+   "flibusta.is": [
+    "179.43.150.83"
+   ],
+   "rezka.ag": [
+    "179.43.189.162"
+   ],
+   "clubtone.do.am": [
+    "185.86.95.62"
+   ],
+   "vk.ru": [
+    "87.240.129.133",
+    "87.240.132.67",
+    "87.240.132.72",
+    "87.240.132.78",
+    "87.240.137.164",
+    "93.186.225.194"
+   ],
+   "gosuslugi.ru": [
+    "213.59.253.7",
+    "213.59.254.7"
+   ]
+  },
+  "no_truth": [],
+  "system": {
+   "kind": "system",
+   "addr": "",
+   "name": "Системный DNS Windows",
+   "ru": false,
+   "truth_source": false,
+   "rewrites": false,
+   "alive": true,
+   "ms": 42,
+   "domains": {
+    "rutor.info": {
+     "verdict": "ok",
+     "ips": [
+      "193.46.255.29"
+     ],
+     "ms": 56,
+     "error": null
+    },
+    "flibusta.is": {
+     "verdict": "ok",
+     "ips": [
+      "179.43.150.83"
+     ],
+     "ms": 45,
+     "error": null
+    },
+    "rezka.ag": {
+     "verdict": "ok",
+     "ips": [
+      "179.43.189.162"
+     ],
+     "ms": 43,
+     "error": null
+    },
+    "clubtone.do.am": {
+     "verdict": "ok",
+     "ips": [
+      "185.86.95.62"
+     ],
+     "ms": 52,
+     "error": null
+    },
+    "vk.ru": {
+     "verdict": "ok",
+     "ips": [
+      "87.240.132.72",
+      "87.240.129.133",
+      "87.240.137.164",
+      "93.186.225.194"
+     ],
+     "ms": 42,
+     "error": null
+    },
+    "gosuslugi.ru": {
+     "verdict": "ok",
+     "ips": [
+      "213.59.253.7",
+      "213.59.254.7"
+     ],
+     "ms": 43,
+     "error": null
+    }
+   },
+   "substituted": [],
+   "differs": []
+  },
+  "udp": [
+   {
+    "kind": "udp",
+    "addr": "8.8.8.8",
+    "name": "Google",
+    "ru": false,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 57,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 45,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 42,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 43,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 43,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.78",
+       "87.240.137.164",
+       "87.240.132.72",
+       "87.240.129.133"
+      ],
+      "ms": 66,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.253.7",
+       "213.59.254.7"
+      ],
+      "ms": 57,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": [],
+    "egress": "172.217.33.153",
+    "hijacked": false
+   },
+   {
+    "kind": "udp",
+    "addr": "1.1.1.1",
+    "name": "Cloudflare",
+    "ru": false,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 32,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 24,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 24,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 5,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 8,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "93.186.225.194",
+       "87.240.129.133",
+       "87.240.137.164",
+       "87.240.132.72"
+      ],
+      "ms": 45,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 32,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": [],
+    "egress": "172.69.50.55",
+    "hijacked": false
+   },
+   {
+    "kind": "udp",
+    "addr": "9.9.9.9",
+    "name": "Quad9",
+    "ru": false,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 33,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 34,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 59,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 19,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 20,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "93.186.225.194",
+       "87.240.132.67",
+       "87.240.132.72",
+       "87.240.137.164"
+      ],
+      "ms": 55,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.253.7",
+       "213.59.254.7"
+      ],
+      "ms": 33,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": [],
+    "egress": "74.63.22.232",
+    "hijacked": false
+   },
+   {
+    "kind": "udp",
+    "addr": "94.140.14.14",
+    "name": "AdGuard",
+    "ru": false,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 55,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 41,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 34,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 34,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 34,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.67",
+       "87.240.132.72",
+       "87.240.137.164",
+       "93.186.225.194"
+      ],
+      "ms": 55,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.253.7",
+       "213.59.254.7"
+      ],
+      "ms": 63,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": [],
+    "egress": "156.146.33.97",
+    "hijacked": false
+   },
+   {
+    "kind": "udp",
+    "addr": "208.67.222.222",
+    "name": "OpenDNS",
+    "ru": false,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 66,
+    "domains": {
+     "rutor.info": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 66,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 68,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 100,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "93.186.225.194",
+       "87.240.129.133",
+       "87.240.132.67",
+       "87.240.132.72"
+      ],
+      "ms": 66,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     }
+    },
+    "substituted": [
+     "rutor.info"
+    ],
+    "differs": [],
+    "egress": null,
+    "hijacked": false
+   },
+   {
+    "kind": "udp",
+    "addr": "185.222.222.222",
+    "name": "DNS.SB",
+    "ru": false,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 283,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 283,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 291,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 283,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 805,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.72",
+       "87.240.132.78",
+       "87.240.137.164",
+       "87.240.129.133"
+      ],
+      "ms": 294,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 283,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": [],
+    "egress": "146.19.19.53",
+    "hijacked": false
+   },
+   {
+    "kind": "udp",
+    "addr": "77.88.8.8",
+    "name": "Яндекс",
+    "ru": true,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 33,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 46,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 19,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 25,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 60,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.67",
+       "87.240.129.133",
+       "87.240.132.72",
+       "87.240.137.164"
+      ],
+      "ms": 33,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 42,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": [],
+    "egress": "37.140.186.55",
+    "hijacked": false
+   },
+   {
+    "kind": "udp",
+    "addr": "62.76.62.76",
+    "name": "MSK-IX",
+    "ru": true,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 21,
+    "domains": {
+     "rutor.info": {
+      "verdict": "nxdomain",
+      "ips": [],
+      "ms": 33,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "nxdomain",
+      "ips": [],
+      "ms": 30,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "nxdomain",
+      "ips": [],
+      "ms": 5,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "nxdomain",
+      "ips": [],
+      "ms": 2,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.67",
+       "87.240.129.133",
+       "87.240.132.72",
+       "87.240.137.164"
+      ],
+      "ms": 33,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.253.7",
+       "213.59.254.7"
+      ],
+      "ms": 21,
+      "error": null
+     }
+    },
+    "substituted": [
+     "rutor.info",
+     "flibusta.is",
+     "rezka.ag",
+     "clubtone.do.am"
+    ],
+    "differs": [],
+    "egress": "193.232.93.61",
+    "hijacked": false
+   },
+   {
+    "kind": "udp",
+    "addr": "195.208.4.1",
+    "name": "НСДИ",
+    "ru": true,
+    "truth_source": false,
+    "rewrites": false,
+    "alive": true,
+    "ms": 33,
+    "domains": {
+     "rutor.info": {
+      "verdict": "nxdomain",
+      "ips": [],
+      "ms": 13,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "nxdomain",
+      "ips": [],
+      "ms": 34,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "nxdomain",
+      "ips": [],
+      "ms": 2,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "nxdomain",
+      "ips": [],
+      "ms": 2,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.129.133",
+       "93.186.225.194",
+       "87.240.132.67",
+       "87.240.132.78"
+      ],
+      "ms": 33,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 42,
+      "error": null
+     }
+    },
+    "substituted": [
+     "rutor.info",
+     "flibusta.is",
+     "rezka.ag",
+     "clubtone.do.am"
+    ],
+    "differs": [],
+    "egress": "193.232.93.82",
+    "hijacked": false
+   }
+  ],
+  "encrypted": [
+   {
+    "kind": "doh",
+    "addr": "https://1.1.1.1/dns-query",
+    "name": "Cloudflare",
+    "ru": false,
+    "truth_source": true,
+    "rewrites": false,
+    "alive": true,
+    "ms": 306,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 212,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 278,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 254,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 327,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.78",
+       "87.240.129.133",
+       "87.240.132.72",
+       "87.240.132.67"
+      ],
+      "ms": 306,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 354,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "doh",
+    "addr": "https://dns.google/dns-query",
+    "name": "Google",
+    "ru": false,
+    "truth_source": true,
+    "rewrites": false,
+    "alive": false,
+    "ms": null,
+    "domains": {
+     "rutor.info": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "сервер не отвечает"
+     },
+     "flibusta.is": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "сервер не отвечает"
+     },
+     "rezka.ag": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "сервер не отвечает"
+     },
+     "clubtone.do.am": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "сервер не отвечает"
+     },
+     "vk.ru": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "gosuslugi.ru": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "doh",
+    "addr": "https://dns.adguard-dns.com/dns-query",
+    "name": "AdGuard",
+    "ru": false,
+    "truth_source": true,
+    "rewrites": false,
+    "alive": true,
+    "ms": 244,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 238,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 250,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 295,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 489,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.72",
+       "87.240.137.164",
+       "93.186.225.194",
+       "87.240.129.133"
+      ],
+      "ms": 1108,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 244,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "doh",
+    "addr": "https://dns.sb/dns-query",
+    "name": "DNS.SB",
+    "ru": false,
+    "truth_source": true,
+    "rewrites": false,
+    "alive": true,
+    "ms": 303,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 264,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 376,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 276,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 296,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.78",
+       "87.240.129.133",
+       "87.240.137.164",
+       "87.240.132.67"
+      ],
+      "ms": 440,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.253.7",
+       "213.59.254.7"
+      ],
+      "ms": 303,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "doh",
+    "addr": "https://dns.comss.one/dns-query",
+    "name": "Comss.one",
+    "ru": true,
+    "truth_source": false,
+    "rewrites": true,
+    "alive": true,
+    "ms": 100,
+    "domains": {
+     "rutor.info": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "flibusta.is": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 101,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 307,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 100,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "doh",
+    "addr": "https://xbox-dns.ru/dns-query",
+    "name": "XboxDNS",
+    "ru": true,
+    "truth_source": false,
+    "rewrites": true,
+    "alive": true,
+    "ms": 98,
+    "domains": {
+     "rutor.info": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "flibusta.is": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "rezka.ag": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "clubtone.do.am": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "vk.ru": {
+      "verdict": "timeout",
+      "ips": [],
+      "ms": null,
+      "error": "нет ответа"
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 98,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "dot",
+    "addr": "1.1.1.1",
+    "name": "Cloudflare",
+    "ru": false,
+    "truth_source": true,
+    "rewrites": false,
+    "alive": true,
+    "ms": 290,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 237,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 255,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 255,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 431,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.132.67",
+       "87.240.137.164",
+       "87.240.132.78",
+       "87.240.129.133"
+      ],
+      "ms": 293,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.253.7",
+       "213.59.254.7"
+      ],
+      "ms": 290,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "dot",
+    "addr": "dns.google",
+    "name": "Google",
+    "ru": false,
+    "truth_source": true,
+    "rewrites": false,
+    "alive": true,
+    "ms": 315,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 276,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 325,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 249,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 336,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.137.164",
+       "87.240.132.78",
+       "87.240.129.133",
+       "93.186.225.194"
+      ],
+      "ms": 315,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 361,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "dot",
+    "addr": "dns.quad9.net",
+    "name": "Quad9",
+    "ru": false,
+    "truth_source": true,
+    "rewrites": false,
+    "alive": true,
+    "ms": 257,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 231,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 268,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 249,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 260,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "87.240.129.133",
+       "87.240.132.72",
+       "87.240.137.164",
+       "93.186.225.194"
+      ],
+      "ms": 385,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.253.7",
+       "213.59.254.7"
+      ],
+      "ms": 257,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "dot",
+    "addr": "dns.adguard-dns.com",
+    "name": "AdGuard",
+    "ru": false,
+    "truth_source": true,
+    "rewrites": false,
+    "alive": true,
+    "ms": 243,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 326,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 275,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 317,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 338,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "93.186.225.194",
+       "87.240.137.164",
+       "87.240.132.72",
+       "87.240.129.133"
+      ],
+      "ms": 398,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.253.7",
+       "213.59.254.7"
+      ],
+      "ms": 243,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   },
+   {
+    "kind": "dot",
+    "addr": "dns.comss.one",
+    "name": "Comss.one",
+    "ru": true,
+    "truth_source": false,
+    "rewrites": true,
+    "alive": true,
+    "ms": 119,
+    "domains": {
+     "rutor.info": {
+      "verdict": "ok",
+      "ips": [
+       "193.46.255.29"
+      ],
+      "ms": 108,
+      "error": null
+     },
+     "flibusta.is": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.150.83"
+      ],
+      "ms": 84,
+      "error": null
+     },
+     "rezka.ag": {
+      "verdict": "ok",
+      "ips": [
+       "179.43.189.162"
+      ],
+      "ms": 93,
+      "error": null
+     },
+     "clubtone.do.am": {
+      "verdict": "ok",
+      "ips": [
+       "185.86.95.62"
+      ],
+      "ms": 107,
+      "error": null
+     },
+     "vk.ru": {
+      "verdict": "ok",
+      "ips": [
+       "93.186.225.194",
+       "87.240.132.72",
+       "87.240.132.67",
+       "87.240.132.78"
+      ],
+      "ms": 183,
+      "error": null
+     },
+     "gosuslugi.ru": {
+      "verdict": "ok",
+      "ips": [
+       "213.59.254.7",
+       "213.59.253.7"
+      ],
+      "ms": 119,
+      "error": null
+     }
+    },
+    "substituted": [],
+    "differs": []
+   }
+  ],
+  "working_encrypted": [
+   {
+    "kind": "doh",
+    "addr": "https://1.1.1.1/dns-query",
+    "name": "Cloudflare",
+    "ms": 306,
+    "rewrites": false
+   },
+   {
+    "kind": "doh",
+    "addr": "https://dns.adguard-dns.com/dns-query",
+    "name": "AdGuard",
+    "ms": 244,
+    "rewrites": false
+   },
+   {
+    "kind": "doh",
+    "addr": "https://dns.sb/dns-query",
+    "name": "DNS.SB",
+    "ms": 303,
+    "rewrites": false
+   },
+   {
+    "kind": "doh",
+    "addr": "https://dns.comss.one/dns-query",
+    "name": "Comss.one",
+    "ms": 100,
+    "rewrites": true
+   },
+   {
+    "kind": "doh",
+    "addr": "https://xbox-dns.ru/dns-query",
+    "name": "XboxDNS",
+    "ms": 98,
+    "rewrites": true
+   },
+   {
+    "kind": "dot",
+    "addr": "1.1.1.1",
+    "name": "Cloudflare",
+    "ms": 290,
+    "rewrites": false
+   },
+   {
+    "kind": "dot",
+    "addr": "dns.google",
+    "name": "Google",
+    "ms": 315,
+    "rewrites": false
+   },
+   {
+    "kind": "dot",
+    "addr": "dns.quad9.net",
+    "name": "Quad9",
+    "ms": 257,
+    "rewrites": false
+   },
+   {
+    "kind": "dot",
+    "addr": "dns.adguard-dns.com",
+    "name": "AdGuard",
+    "ms": 243,
+    "rewrites": false
+   },
+   {
+    "kind": "dot",
+    "addr": "dns.comss.one",
+    "name": "Comss.one",
+    "ms": 119,
+    "rewrites": true
+   }
+  ],
+  "foreign_substituted": [
+   "OpenDNS"
+  ],
+  "stubs": [],
+  "hijack": [],
+  "ms": 18349,
+  "checked_at": 1795547325.6719167
+ }
+}

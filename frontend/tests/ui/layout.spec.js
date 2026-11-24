@@ -67,3 +67,23 @@ for (const scale of ["1", "1.4"]) {
     expect(Math.abs(nav.y + nav.height - vh)).toBeLessThan(2);
   });
 }
+
+for (const scale of ["1", "1.4"]) {
+  test(`с баннером сверху кнопка «Свернуть» видна, масштаб ${scale}`, async ({ page }) => {
+    await prepare(page, { scale });
+    const { state } = await mockApi(page);
+    state["/api/status"].admin = false; // баннер «UI запущен без прав администратора»
+    await page.goto("./#panel");
+    await expect(page.locator(".banner.warn")).toBeVisible();
+    const toggle = page.getByRole("button", { name: "Свернуть меню" });
+    const vh = await page.evaluate(() => innerHeight);
+    for (const y of [0, 2000]) {
+      await page.evaluate((y) => scrollTo(0, y), y);
+      const b = await toggle.boundingBox();
+      expect(b.y + b.height, `прокрутка ${y}: низ кнопки в окне`).toBeLessThanOrEqual(vh);
+      const nav = await page.locator(".nav").boundingBox();
+      expect(Math.abs(nav.y + nav.height - vh), `прокрутка ${y}: меню до низа окна`).toBeLessThan(2);
+    }
+    await expect(page.locator(".banner.warn")).toBeInViewport(); // шапка с баннером закреплена
+  });
+}

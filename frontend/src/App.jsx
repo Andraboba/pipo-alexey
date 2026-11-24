@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { StoreProvider, useHashTab, useStore } from "./store.jsx";
 import TopBar from "./layout/TopBar.jsx";
 import Nav from "./layout/Nav.jsx";
@@ -32,10 +32,26 @@ export const TABS = [
   { id: "settings", label: "Настройки", Icon: IconSettings, Page: SettingsPage },
 ];
 
+/** Верхняя панель вместе с баннерами закреплена сверху; меню слева занимает остаток окна.
+ *  Высота шапки меняется с баннерами — отдаём её в CSS как --header-h. */
+function useHeaderHeight() {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const set = () => document.documentElement.style.setProperty("--header-h", el.offsetHeight + "px");
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return ref;
+}
+
 function Shell() {
   const tab = useHashTab(TABS.map((t) => t.id), "panel");
   const { status, offline } = useStore();
   const { Page } = TABS.find((t) => t.id === tab);
+  const headerRef = useHeaderHeight();
   const [navCollapsed, setNavCollapsed] = useState(() => localStorage.getItem("navCollapsed") === "1");
   const toggleNav = () => setNavCollapsed((c) => {
     localStorage.setItem("navCollapsed", c ? "0" : "1");
@@ -46,8 +62,10 @@ function Shell() {
   useEffect(() => { if (ready && !tourSeen()) startTour(); }, [ready]);
   return (
     <>
-      <TopBar />
-      <Banners />
+      <div className="app-header" ref={headerRef}>
+        <TopBar />
+        <Banners />
+      </div>
       <div className={"shell" + (navCollapsed ? " nav-collapsed" : "")}>
         <Nav tabs={TABS} active={tab} collapsed={navCollapsed} onToggle={toggleNav} />
         <main>

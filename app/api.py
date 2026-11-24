@@ -64,7 +64,7 @@ def _busy_with(request: Request) -> str | None:
     Читать можно, остановить задачу можно; всё остальное — 409. Одно правило вместо проверки в каждом обработчике."""
     path = request.url.path
     if (request.method in ("GET", "HEAD") or not path.startswith("/api/") or path.startswith("/api/jobs/")
-            or path == "/api/app/quit"):
+            or path in ("/api/app/quit", "/api/ui")):
         return None
     job = jobs.current()
     return JOB_NAMES.get(job.kind, "другая операция") if job else None
@@ -617,10 +617,23 @@ def settings_get():
     return settings.load()
 
 
+UI_THEMES = ("system", "dark", "light")
+
+
+@app.put("/api/ui")
+def ui_put(patch: dict = Body(...)):
+    """Оформление интерфейса. Запрет не трогает — разрешено и во время подбора."""
+    theme = patch.get("theme")
+    if theme not in UI_THEMES:
+        raise HTTPException(400, f"theme: одно из {', '.join(UI_THEMES)}")
+    settings.save({"ui_theme": theme})
+    return {"theme": theme}
+
+
 @app.put("/api/settings")
 def settings_put(patch: dict = Body(...)):
     # движок меняется только через /api/zapret/engine: там служба и списки переносятся как надо
-    patch = {k: v for k, v in patch.items() if k not in ("engine", "strategies")}
+    patch = {k: v for k, v in patch.items() if k not in ("engine", "strategies", "ui_theme")}
     if "zapret2_dir" in patch and not (isinstance(patch["zapret2_dir"], str) and patch["zapret2_dir"].strip()):
         raise HTTPException(400, "укажите папку zapret2")
     if "zapret2_dir" in patch and settings.engine() == "zapret2" and not (Path(patch["zapret2_dir"]) / "bin" / "winws2.exe").is_file():

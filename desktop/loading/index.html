@@ -3,22 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <title>Пипо Алексей</title>
+  <script>
+    // тему выбирают в «Настройках»; оболочка передаёт её до загрузки страницы (см. main.rs)
+    const t = window.__PIPO_THEME;
+    document.documentElement.dataset.theme = t === "light" || t === "dark" ? t
+      : matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  </script>
   <style>
-    :root { color-scheme: dark; }
+    /* те же цвета, что в frontend/src/styles/tokens.css */
+    :root { color-scheme: dark; --bg: #141415; --text: #ededed; --muted: #a1a1a6; --faint: #85858b; --amber: #f2b33d; --red: #e5484d; }
+    :root[data-theme="light"] { color-scheme: light; --bg: #fafafa; --text: #171717; --muted: #525252; --faint: #737373; --amber: #a86b00; --red: #dc2626; }
     html, body { margin: 0; height: 100%; }
     body {
-      display: grid; place-items: center; background: #141415; color: #ededed;
+      display: grid; place-items: center; background: var(--bg); color: var(--text);
       font: 14px/20px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
       -webkit-font-smoothing: antialiased; user-select: none;
     }
     .box { display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 520px; padding: 24px; text-align: center; }
     .brand { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 500; }
-    .brand span { color: #85858b; }
-    .lamp { width: 8px; height: 8px; border-radius: 50%; background: #f2b33d; animation: blink 1.2s ease-in-out infinite; }
-    #state { color: #a1a1a6; }
-    #error { display: none; color: #a1a1a6; font-size: 13px; user-select: text; }
-    #error b { display: block; color: #e5484d; font-weight: 500; font-size: 14px; margin-bottom: 8px; }
-    code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: #ededed; }
+    .brand span { color: var(--faint); }
+    .lamp { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); animation: blink 1.2s ease-in-out infinite; }
+    #state { color: var(--muted); }
+    #error { display: none; color: var(--muted); font-size: 13px; user-select: text; }
+    #error b { display: block; color: var(--red); font-weight: 500; font-size: 14px; margin-bottom: 8px; }
+    code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--text); }
     @keyframes blink { 50% { opacity: .3; } }
     @media (prefers-reduced-motion: reduce) { .lamp { animation: none; } }
   </style>
@@ -33,7 +41,7 @@
     // оболочка вызывает это, если сервер не поднялся или упал
     window.showError = (text, log) => {
       document.getElementById("state").style.display = "none";
-      document.querySelector(".lamp").style.cssText = "animation:none;background:#e5484d";
+      document.querySelector(".lamp").style.cssText = "animation:none;background:var(--red)";
       const box = document.getElementById("error");
       box.style.display = "block";
       box.innerHTML = "<b></b><div></div>";

@@ -1,6 +1,7 @@
-/* верхняя панель */
+/* шапка: верхняя панель и баннеры закреплены вместе, её высоту App отдаёт в --header-h */
+.app-header { position: sticky; top: 0; z-index: 10; }
 .topbar {
-  position: sticky; top: 0; z-index: 10; height: 56px;
+  height: 56px;
   display: flex; align-items: center; gap: 16px; padding: 0 24px;
   background: var(--sunk); border-bottom: 1px solid var(--line);
 }
@@ -53,10 +54,10 @@
 .banner > span { flex: 1; min-width: 240px; }
 
 /* каркас: сайдбар + контент */
-.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: calc(var(--vh, 1vh) * 100 - 56px); transition: grid-template-columns .2s var(--ease); }
+.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: calc(var(--vh, 1vh) * 100 - var(--header-h, 56px)); transition: grid-template-columns .2s var(--ease); }
 .shell.nav-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .nav {
-  position: sticky; top: 56px; align-self: start; height: calc(var(--vh, 1vh) * 100 - 56px);
+  position: sticky; top: var(--header-h, 56px); align-self: start; height: calc(var(--vh, 1vh) * 100 - var(--header-h, 56px));
   display: flex; flex-direction: column; gap: 2px; padding: 16px 12px;
   background: var(--sunk); border-right: 1px solid var(--line);
 }

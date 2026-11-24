@@ -30,9 +30,11 @@ test("«Как в системе» переключается вслед за Wi
   await expect.poll(() => theme(page)).toBe("dark");
 });
 
-test("выбранная тема не зависит от системы и сохраняется", async ({ page }) => {
+test("выбранная тема не зависит от системы, сохраняется и уходит на сервер для заглушки", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await prepare(page);
+  const bodies = [];
+  page.on("request", (r) => { if (r.url().endsWith("/api/ui")) bodies.push(r.postDataJSON().theme); });
   await mockApi(page);
   await page.goto("./#settings");
   await page.getByRole("radio", { name: "Светлая" }).click();
@@ -46,4 +48,6 @@ test("выбранная тема не зависит от системы и с�
   await page.emulateMedia({ colorScheme: "light" });
   expect(await theme(page)).toBe("dark");
   expect(await bg(page)).toBe(DARK);
+  await expect.poll(() => bodies.at(-1)).toBe("dark");
+  expect(bodies).toContain("light");
 });

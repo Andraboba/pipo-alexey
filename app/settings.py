@@ -24,6 +24,9 @@ DEFAULTS: dict[str, Any] = {
     "strategies": {},
     # None — искать TgWsProxy.exe рядом с запретом
     "tg_exe": None,
+    # тема интерфейса (system | dark | light): копия выбора из «Настроек», чтобы окно-оболочка
+    # показало заглушку загрузки в той же теме ещё до старта сервера
+    "ui_theme": "system",
 }
 
 _lock = threading.Lock()

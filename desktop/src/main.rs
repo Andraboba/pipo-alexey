@@ -12,9 +12,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tauri::webview::Color;
-use tauri::{AppHandle, Manager, RunEvent, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Manager, RunEvent, Theme, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 
 use server::Backend;
+
+// фон окна до первой отрисовки страницы — как --bg в tokens.css, чтобы не мигало
+const DARK_BG: Color = Color(0x14, 0x14, 0x15, 0xff);
+const LIGHT_BG: Color = Color(0xfa, 0xfa, 0xfa, 0xff);
 
 fn main() {
     tauri::Builder::default()
@@ -22,13 +26,19 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            // заглушка загрузки — в теме из «Настроек»; «как в системе» она определит сама
+            let theme = server::saved_theme();
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+                .initialization_script(format!("window.__PIPO_THEME = {theme:?};"))
                 .title("Пипо Алексей")
                 .inner_size(1360.0, 900.0)
                 .min_inner_size(960.0, 640.0)
-                .background_color(Color(0x14, 0x14, 0x15, 0xff))
+                .background_color(if theme == "light" { LIGHT_BG } else { DARK_BG })
                 .center()
                 .build()?;
+            if theme == "system" && window.theme().ok() == Some(Theme::Light) {
+                let _ = window.set_background_color(Some(LIGHT_BG));
+            }
             // Первый показ окна Windows берёт из STARTUPINFO запустившего процесса: из IDE, планировщика
             // или ярлыка «свёрнуто» окно может остаться скрытым. Второй показ выполняется как есть.
             let _ = window.show();

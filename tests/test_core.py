@@ -395,7 +395,7 @@ class VersionTests(unittest.TestCase):
 
 
 class ApiGuardTests(unittest.TestCase):
-    def call(self, path, headers, method="GET"):
+    def call(self, path, headers, method="GET", body=b""):
         from app.api import app
         scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": method,
                  "scheme": "http", "path": path, "raw_path": path.encode(), "query_string": b"",
@@ -404,7 +404,7 @@ class ApiGuardTests(unittest.TestCase):
         sent = []
 
         async def receive():
-            return {"type": "http.request", "body": b"", "more_body": False}
+            return {"type": "http.request", "body": body, "more_body": False}
 
         async def send(msg):
             sent.append(msg)
@@ -437,6 +437,20 @@ class ApiGuardTests(unittest.TestCase):
             self.assertIn("подбор", json.loads(body)["detail"])
             self.assertEqual(self.call("/api/settings", h)[0], 200)  # читать можно
             self.assertNotEqual(self.call(f"/api/jobs/{job.id}/cancel", h, "POST")[0], 409)  # остановить — тоже
+
+    def test_ui_theme_saved_for_shell(self):
+        """Тему видит окно-оболочка в settings.json ещё до старта сервера; менять её можно и во время подбора."""
+        from app import jobs
+        from app.api import TOKEN
+        h = {"host": "127.0.0.1:47800", "x-pipo-token": TOKEN, "content-type": "application/json"}
+        data = Path(tempfile.mkdtemp(prefix="pipo-test-"))
+        self.addCleanup(shutil.rmtree, data, True)
+        with mock.patch.object(app_settings, "DATA_DIR", data),                 mock.patch.object(jobs, "current", return_value=jobs.Job("scan")):
+            self.assertEqual(app_settings.load()["ui_theme"], "system")
+            status, _ = self.call("/api/ui", h, "PUT", json.dumps({"theme": "light"}).encode())
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads((data / "settings.json").read_text(encoding="utf-8"))["ui_theme"], "light")
+            self.assertEqual(self.call("/api/ui", h, "PUT", b'{"theme": "pink"}')[0], 400)
 
 
 if __name__ == "__main__":

@@ -73,7 +73,7 @@ test("ПКМ по прокси TG: запустить и остановить", 
   await lamp.click({ button: "right" });
   await page.locator(".lamp-menu").getByRole("menuitem", { name: "Остановить", exact: true }).click();
   await expect(lamp).toContainText("выкл");
-  expect(calls).toEqual(["POST /api/tg/start", "POST /api/tg/stop"]);
+  expect(calls.filter((c) => c.includes("/api/tg/"))).toEqual(["POST /api/tg/start", "POST /api/tg/stop"]);
 });
 
 test("служба не установлена — запуск недоступен и есть подсказка", async ({ page }) => {

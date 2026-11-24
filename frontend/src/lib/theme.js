@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { put } from "./api.js";
 
 // Тема: как в системе (по умолчанию), тёмная или светлая. На <html> всегда стоит итоговая
 // data-theme="dark" | "light" — светлая палитра в tokens.css описана один раз.
@@ -22,15 +23,20 @@ function apply() {
   listeners.forEach((l) => l());
 }
 
+/** Копия выбора на сервере (data\settings.json): окно-оболочка красит заглушку загрузки ещё до старта сервера. */
+const saveForShell = () => put("/api/ui", { theme: pref }).catch(() => { /* не критично: заглушка будет как в системе */ });
+
 export function setThemePref(p) {
   pref = p;
   localStorage.setItem(KEY, p);
   apply();
+  saveForShell();
 }
 
 // сменили тему Windows — «как в системе» переключается сразу, без перезапуска
 media.addEventListener("change", apply);
 apply();
+saveForShell(); // выбор, сделанный до появления этой копии, тоже должен дойти до оболочки
 
 const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };
 

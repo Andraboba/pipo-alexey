@@ -133,7 +133,31 @@ fn exe_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "не удалось определить папку программы".to_string())
 }
 
-/// Отладка (`cargo run`): сервер из исходников — python из .venv репозитория, данные в data репозитория.
+/// Папка данных: в отладке — data репозитория, в релизе — data рядом с PipoAlexey.exe (как раньше).
+#[cfg(debug_assertions)]
+pub fn data_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("data")
+}
+
+#[cfg(not(debug_assertions))]
+pub fn data_dir() -> PathBuf {
+    exe_dir().map(|d| d.join("data")).unwrap_or_else(|_| PathBuf::from("data"))
+}
+
+/// Тема из «Настроек» (копия в data\settings.json) — для заглушки загрузки, пока сервера ещё нет.
+pub fn saved_theme() -> &'static str {
+    let theme = std::fs::read_to_string(data_dir().join("settings.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        .and_then(|v| v.get("ui_theme").and_then(Value::as_str).map(str::to_owned));
+    match theme.as_deref() {
+        Some("light") => "light",
+        Some("dark") => "dark",
+        _ => "system",
+    }
+}
+
+/// Отладка (`cargo run`): сервер из исходников — python из .venv репозитория.
 #[cfg(debug_assertions)]
 fn server_command() -> Result<(Command, PathBuf), String> {
     let _ = exe_dir;
@@ -141,14 +165,14 @@ fn server_command() -> Result<(Command, PathBuf), String> {
     let python = repo.join(".venv").join("Scripts").join("python.exe");
     let mut cmd = Command::new(&python);
     cmd.arg(repo.join("main.py")).current_dir(&repo);
-    Ok((cmd, repo.join("data")))
+    Ok((cmd, data_dir()))
 }
 
 /// Релиз: вшитый pipo-server.exe распаковывается в data\runtime рядом с PipoAlexey.exe
-/// (переписывается, только если изменился). Данные — в data рядом с exe, как раньше.
+/// (переписывается, только если изменился).
 #[cfg(not(debug_assertions))]
 fn server_command() -> Result<(Command, PathBuf), String> {
-    let data = exe_dir()?.join("data");
+    let data = data_dir();
     let dir = data.join("runtime");
     let exe = dir.join("pipo-server.exe");
     let same = std::fs::read(&exe).map(|b| b == SERVER_EXE).unwrap_or(false);

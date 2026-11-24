@@ -8,6 +8,11 @@
     PipoAlexey.exe --browser      # вместо окна — обычный браузер
     PipoAlexey.exe --server-only  # только сервер (для разработки фронта)
     PipoAlexey.exe --no-admin     # без повышения прав (только просмотр)
+
+Окно-оболочка на Tauri (папка desktop) запускает этот же сервер как pipo-server.exe:
+    pipo-server.exe --server-only --no-admin --port N --parent-pid PID
+токен приходит в PIPO_TOKEN, папка данных — в PIPO_DATA_DIR. Сервер завершается сам,
+когда оболочка просит выйти (POST /api/app/quit) или её процесс пропал.
 """
 from __future__ import annotations
 
@@ -119,6 +124,7 @@ def main() -> None:
     ap.add_argument("--no-admin", action="store_true")
     ap.add_argument("--browser", action="store_true", help="открыть в обычном браузере вместо окна")
     ap.add_argument("--server-only", "--no-browser", dest="server_only", action="store_true")
+    ap.add_argument("--parent-pid", type=int, help="завершиться вместе с этим процессом (окно-оболочка)")
     args = ap.parse_args()
 
     if not args.no_admin and not winutil.is_admin():
@@ -140,8 +146,10 @@ def main() -> None:
     log.info("UI: %s", url)
 
     if args.server_only:
-        print(f"Пипо Алексей: {url}")
-        thread.join()
+        if sys.stdout is not None:
+            print(f"Пипо Алексей: {url}", flush=True)
+        wait_for_quit(thread, args.parent_pid)
+        stop(server, thread)
         return
 
     if args.browser:
@@ -156,6 +164,22 @@ def main() -> None:
         else:
             winutil.open_url_unelevated(url)
             thread.join()
+    stop(server, thread)
+
+
+def wait_for_quit(thread: threading.Thread, parent_pid: int | None) -> None:
+    """Режим сервера: работать, пока оболочка не попросит выйти или не пропадёт сама."""
+    from app.api import QUIT
+    while thread.is_alive():
+        if QUIT.wait(1):
+            log.info("оболочка попросила выйти")
+            return
+        if parent_pid and not winutil.pid_alive(parent_pid):
+            log.info("оболочка (PID %s) завершилась — выходим", parent_pid)
+            return
+
+
+def stop(server, thread: threading.Thread) -> None:
     from app import jobs
     if not jobs.shutdown(timeout=30):  # подбор/обновление сами вернут запрет; не дождались — вернёт recover при старте
         log.warning("задача не завершилась за 30 с — запрет вернётся при следующем запуске")

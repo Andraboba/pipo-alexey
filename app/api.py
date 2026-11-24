@@ -13,6 +13,7 @@ import os
 import secrets
 import socket
 import ssl
+import threading
 import time
 from pathlib import Path
 
@@ -27,6 +28,8 @@ from . import (__version__, dnscheck, evolve, hostsmod, jobs, presets, scan, set
 TOKEN = os.environ.get("PIPO_TOKEN") or secrets.token_urlsafe(24)
 DIST_DIR = settings.WEB_DIR / "dist"
 ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
+# окно-оболочка закрывается: main.py остановит задачу (она вернёт запрет как было) и выключит сервер
+QUIT = threading.Event()
 
 app = FastAPI(title="pipo", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -60,7 +63,8 @@ def _busy_with(request: Request) -> str | None:
 
     Читать можно, остановить задачу можно; всё остальное — 409. Одно правило вместо проверки в каждом обработчике."""
     path = request.url.path
-    if request.method in ("GET", "HEAD") or not path.startswith("/api/") or path.startswith("/api/jobs/"):
+    if (request.method in ("GET", "HEAD") or not path.startswith("/api/") or path.startswith("/api/jobs/")
+            or path == "/api/app/quit"):
         return None
     job = jobs.current()
     return JOB_NAMES.get(job.kind, "другая операция") if job else None
@@ -92,6 +96,13 @@ def index():
     except OSError:
         return HTMLResponse("UI не собран: выполните <code>npm install && npm run build</code> в папке frontend", 503)
     return html.replace("__PIPO_TOKEN__", TOKEN)
+
+
+@app.post("/api/app/quit")
+def app_quit():
+    """Выход из трея: ответ сразу, сама остановка — в main.py."""
+    QUIT.set()
+    return {"ok": True}
 
 
 DIST_DIR.mkdir(parents=True, exist_ok=True)

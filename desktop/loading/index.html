@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Пипо Алексей</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      display: grid; place-items: center; background: #141415; color: #ededed;
+      font: 14px/20px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased; user-select: none;
+    }
+    .box { display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 520px; padding: 24px; text-align: center; }
+    .brand { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 500; }
+    .brand span { color: #85858b; }
+    .lamp { width: 8px; height: 8px; border-radius: 50%; background: #f2b33d; animation: blink 1.2s ease-in-out infinite; }
+    #state { color: #a1a1a6; }
+    #error { display: none; color: #a1a1a6; font-size: 13px; user-select: text; }
+    #error b { display: block; color: #e5484d; font-weight: 500; font-size: 14px; margin-bottom: 8px; }
+    code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: #ededed; }
+    @keyframes blink { 50% { opacity: .3; } }
+    @media (prefers-reduced-motion: reduce) { .lamp { animation: none; } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="brand"><i class="lamp"></i>Пипо <span>Алексей</span></div>
+    <div id="state">Запускаю…</div>
+    <div id="error"></div>
+  </div>
+  <script>
+    // оболочка вызывает это, если сервер не поднялся или упал
+    window.showError = (text, log) => {
+      document.getElementById("state").style.display = "none";
+      document.querySelector(".lamp").style.cssText = "animation:none;background:#e5484d";
+      const box = document.getElementById("error");
+      box.style.display = "block";
+      box.innerHTML = "<b></b><div></div>";
+      box.querySelector("b").textContent = text;
+      box.querySelector("div").innerHTML = "Подробности в журнале: <code></code>";
+      box.querySelector("code").textContent = log;
+    };
+  </script>
+</body>
+</html>

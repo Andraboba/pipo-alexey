@@ -389,7 +389,9 @@ class VersionTests(unittest.TestCase):
         root = Path(__file__).resolve().parent.parent
         py = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
         js = json.loads((root / "frontend" / "package.json").read_text(encoding="utf-8"))["version"]
-        self.assertEqual((app.__version__, js), (py, py))
+        rs = tomllib.loads((root / "desktop" / "Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
+        tauri = json.loads((root / "desktop" / "tauri.conf.json").read_text(encoding="utf-8"))["version"]
+        self.assertEqual((app.__version__, js, rs, tauri), (py, py, py, py))
 
 
 class ApiGuardTests(unittest.TestCase):

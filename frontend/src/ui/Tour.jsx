@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { go } from "../store.jsx";
 import { cssRect, cssViewport } from "../lib/uiScale.js";
+import { IN_TRAY_SHELL } from "../lib/shell.js";
 import "../styles/tour.css";
 
 // Гайд для первого запуска: проходит по вкладкам, подсвечивает пункт меню и главное на странице.
@@ -68,12 +69,16 @@ const STEPS = [
     title: "Обновления",
     text: "Новые версии запрета, zapret2, прокси Telegram и списков блокировок. Когда что-то вышло, на пункте меню появится точка.",
   },
+  IN_TRAY_SHELL && {
+    title: "Значок в трее",
+    text: "Крестик не закрывает Пипо Алексея, а прячет его в трей — к часам. Правая кнопка по значку включает и выключает запрет и прокси Telegram, «Выход» там же закрывает программу совсем.",
+  },
   {
     tab: "settings", targets: [nav("settings"), '[data-tour="tour"]'],
     title: "Готово",
     text: "Здесь можно поменять масштаб интерфейса и пройти этот гайд ещё раз. Начать стоит с «Пульта»: выбрать стратегию и запустить запрет.",
   },
-];
+].filter(Boolean);
 
 const listeners = new Set();
 let open = false;

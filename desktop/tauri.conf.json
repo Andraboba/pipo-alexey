@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PipoAlexey",
+  "version": "0.3.0",
+  "identifier": "ru.pipo.alexey",
+  "build": {
+    "frontendDist": "loading"
+  },
+  "app": {
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["../assets/icon.ico"]
+  }
+}

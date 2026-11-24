@@ -36,6 +36,19 @@ def is_admin() -> bool:
         return False
 
 
+def pid_alive(pid: int) -> bool:
+    """Жив ли процесс с этим PID (для сервера, которым управляет окно-оболочка)."""
+    k32 = ctypes.windll.kernel32
+    h = k32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return False
+    try:
+        code = ctypes.c_ulong()
+        return bool(k32.GetExitCodeProcess(h, ctypes.byref(code))) and code.value == 259  # STILL_ACTIVE
+    finally:
+        k32.CloseHandle(h)
+
+
 def process_running(image: str) -> bool:
     out = run(["tasklist", "/FI", f"IMAGENAME eq {image}", "/FO", "CSV", "/NH"]).stdout
     for row in csv.reader(io.StringIO(out)):

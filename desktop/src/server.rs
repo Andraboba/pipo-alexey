@@ -75,6 +75,10 @@ impl Backend {
         let end = Instant::now() + timeout;
         let mut retries = 0;
         while Instant::now() < end {
+            // «Выход» нажали, пока сервер поднимался: не ждём и не перезапускаем его
+            if self.quitting.load(Ordering::SeqCst) {
+                return Err("выход".into());
+            }
             match self.exited() {
                 Some(EXIT_PORT_BUSY) if retries < 5 => {
                     retries += 1;
@@ -119,12 +123,15 @@ impl Backend {
     /// Не уложился — завершаем все его процессы; незаконченный подбор вернёт запрет при следующем запуске.
     pub fn shutdown(&self) {
         self.quitting.store(true, Ordering::SeqCst);
-        if self.exited().is_none() {
-            let _ = self.post("/api/app/quit");
-            let end = Instant::now() + Duration::from_secs(40);
-            while self.exited().is_none() && Instant::now() < end {
-                std::thread::sleep(Duration::from_millis(200));
+        // Сервер мог ещё не начать слушать порт (выход в первые секунды) — просим, пока не услышит.
+        // Ответил — дальше он завершится сам, нам остаётся ждать.
+        let end = Instant::now() + Duration::from_secs(40);
+        let mut asked = false;
+        while self.exited().is_none() && Instant::now() < end {
+            if !asked {
+                asked = self.post("/api/app/quit").is_ok();
             }
+            std::thread::sleep(Duration::from_millis(if asked { 200 } else { 300 }));
         }
         // загрузчик PyInstaller мог выйти, а Python под ним — нет: добиваем всё задание целиком
         self.job.terminate();
@@ -143,12 +150,57 @@ fn spawn(token: &str, data_dir: &Path) -> Result<(String, Child, Job), String> {
     cmd.args(["--server-only", "--no-admin", "--port", &port.to_string()])
         .args(["--parent-pid", &std::process::id().to_string()])
         .env("PIPO_TOKEN", token)
-        .env("PIPO_DATA_DIR", data_dir)
-        .creation_flags(CREATE_NO_WINDOW);
-    let child = cmd.spawn().map_err(|e| format!("не удалось запустить сервер: {e}"))?;
+        .env("PIPO_DATA_DIR", data_dir);
+    let (child, job) = spawn_in_job(&mut cmd).map_err(|e| format!("не удалось запустить сервер: {e}"))?;
+    Ok((format!("http://127.0.0.1:{port}"), child, job))
+}
+
+/// Запустить процесс приостановленным, поместить в задание и только потом возобновить:
+/// иначе загрузчик PyInstaller (или лаунчер python.exe из .venv) мог бы успеть породить Python вне задания.
+fn spawn_in_job(cmd: &mut Command) -> std::io::Result<(Child, Job)> {
+    const CREATE_SUSPENDED: u32 = 0x0000_0004;
+    let mut child = cmd.creation_flags(CREATE_NO_WINDOW | CREATE_SUSPENDED).spawn()?;
     let job = Job::new();
     job.assign(&child);
-    Ok((format!("http://127.0.0.1:{port}"), child, job))
+    if let Err(e) = resume_process(child.id()) {
+        let _ = child.kill();
+        return Err(e);
+    }
+    Ok((child, job))
+}
+
+/// Возобновить потоки приостановленного процесса (у только что созданного — один, главный).
+fn resume_process(pid: u32) -> std::io::Result<()> {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::*;
+    use windows_sys::Win32::System::Threading::{OpenThread, ResumeThread, THREAD_SUSPEND_RESUME};
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        if snap == INVALID_HANDLE_VALUE {
+            return Err(std::io::Error::last_os_error());
+        }
+        let mut entry: THREADENTRY32 = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<THREADENTRY32>() as u32;
+        let mut resumed = 0;
+        let mut ok = Thread32First(snap, &mut entry) != 0;
+        while ok {
+            if entry.th32OwnerProcessID == pid {
+                let th = OpenThread(THREAD_SUSPEND_RESUME, 0, entry.th32ThreadID);
+                if !th.is_null() {
+                    if ResumeThread(th) != u32::MAX {
+                        resumed += 1;
+                    }
+                    CloseHandle(th);
+                }
+            }
+            ok = Thread32Next(snap, &mut entry) != 0;
+        }
+        CloseHandle(snap);
+        if resumed == 0 {
+            return Err(std::io::Error::other("не удалось возобновить процесс сервера"));
+        }
+    }
+    Ok(())
 }
 
 /// Объект задания Windows: TerminateJobObject завершает все процессы сервера разом.
@@ -309,18 +361,16 @@ fn random_token() -> String {
 mod tests {
     use super::*;
 
-    /// Задание завершает и внуков: так и устроен pipo-server.exe (загрузчик → Python).
+    /// Запуск приостановленным + задание: процесс работает после возобновления,
+    /// а terminate завершает и внуков — так устроен pipo-server.exe (загрузчик → Python).
     #[test]
     fn job_terminates_grandchildren() {
         let marker = format!("pipo-job-test-{}", std::process::id());
         // cmd → ping: ping — «внук», как Python под загрузчиком PyInstaller
-        let child = Command::new("cmd")
-            .args(["/c", &format!("title {marker} & ping -n 30 127.0.0.1 >nul")])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .unwrap();
-        let job = Job::new();
-        job.assign(&child);
+        let (child, job) = spawn_in_job(
+            Command::new("cmd").args(["/c", &format!("title {marker} & ping -n 30 127.0.0.1 >nul")]),
+        )
+        .unwrap();
         std::thread::sleep(Duration::from_millis(500));
         let pings = || {
             let out = Command::new("powershell")

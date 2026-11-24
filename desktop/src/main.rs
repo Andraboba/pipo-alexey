@@ -64,6 +64,7 @@ fn main() {
                         }
                         Err(e) => show_error(&window, &e.to_string(), &backend.log_path().display().to_string()),
                     },
+                    Err(_) if backend.quitting.load(Ordering::SeqCst) => return, // «Выход» во время запуска
                     Err(e) => {
                         backend.dead.store(true, Ordering::SeqCst);
                         show_error(&window, &e, &backend.log_path().display().to_string());

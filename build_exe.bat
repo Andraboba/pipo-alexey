@@ -1,6 +1,7 @@
 @echo off
 rem cmd читает .bat в кодировке консоли: переключаем на UTF-8, в конце возвращаем прежнюю
-for /f "tokens=2 delims=:" %%a in ('chcp') do set "OLD_CP=%%a"
+rem только номер: "Active code page: 866" или "Aktive Codepage: 850." (с точкой) — set /a отбросит пробелы
+for /f "tokens=2 delims=:." %%a in ('chcp') do set /a "OLD_CP=%%a" >nul
 chcp 65001 >nul
 rem Собирает dist\PipoAlexey.exe:
 rem   1) React-интерфейс  2) сервер pipo-server.exe (PyInstaller)  3) окно с треем на Tauri (Rust),

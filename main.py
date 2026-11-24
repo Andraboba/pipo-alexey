@@ -144,8 +144,7 @@ def main() -> None:
         # отказ от UAC — продолжаем в режиме просмотра
 
     setup_logging()
-    if winutil.is_admin():
-        recover_after_crash()
+    # порт — до возврата запрета: выход с кодом 3 оборвал бы возврат посреди команд службе
     if args.parent_pid:
         # оболочка ждёт сервер ровно на этом порту: молча занять соседний нельзя, она бы его не нашла
         if not port_is_free(args.port):
@@ -154,6 +153,8 @@ def main() -> None:
         port = args.port
     else:
         port = free_port(args.port)
+    if winutil.is_admin():
+        recover_after_crash()
     url = f"http://127.0.0.1:{port}/"
     try:
         server, thread = start_server(port)

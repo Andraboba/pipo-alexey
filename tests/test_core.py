@@ -478,6 +478,22 @@ class ShellPortTests(unittest.TestCase):
                                env=env, cwd=root, capture_output=True, timeout=60)
         self.assertEqual(r.returncode, main.EXIT_PORT_BUSY, r.stderr.decode(errors="replace")[-500:])
 
+    def test_busy_port_checked_before_recover(self):
+        """Возврат запрета после сбоя не начинается, если сервер всё равно выйдет с кодом 3 —
+        иначе выход оборвал бы возврат посреди команд службе."""
+        import socket
+        import sys
+        import main
+        with socket.socket() as busy:
+            busy.bind(("127.0.0.1", 0))
+            busy.listen()
+            port = busy.getsockname()[1]
+            argv = ["main.py", "--server-only", "--no-admin", "--port", str(port), "--parent-pid", "1"]
+            with mock.patch.object(sys, "argv", argv), mock.patch.object(main, "setup_logging"),                     mock.patch.object(main.winutil, "is_admin", return_value=True),                     mock.patch.object(main, "recover_after_crash") as recover,                     self.assertRaises(SystemExit) as ex:
+                main.main()
+        self.assertEqual(ex.exception.code, main.EXIT_PORT_BUSY)
+        recover.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

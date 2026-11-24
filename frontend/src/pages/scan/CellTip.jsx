@@ -1,5 +1,6 @@
 import { cellState } from "./cellState.js";
 import { ANY_CODE_NOTE, humanDetail } from "./humanDetail.js";
+import { cssRect, cssViewport } from "../../lib/uiScale.js";
 
 const STATUS = {
   blocked: "Заблокирована: без запрета не проходит",
@@ -11,8 +12,10 @@ const STATE = { ok: "проходит", half: "частично", bad: "не п�
 /** Всплывашка над клеткой: что за адрес, чей он и что с ним произошло. */
 export default function CellTip({ tip }) {
   const { t, el, r, base, meta } = tip;
-  const box = el.getBoundingClientRect();
-  const left = Math.min(Math.max(8, box.left - 140), window.innerWidth - 336);
+  // координаты внутри масштабированной страницы (zoom на <html>) — как у меню ламп и гайда
+  const box = cssRect(el);
+  const vp = cssViewport();
+  const left = Math.min(Math.max(8, box.left - 140), vp.width - 336);
   const below = box.top < 220;
   const state = r ? cellState(r, meta) : "";
   // сравнение с прогоном без запрета: стратегия сломала открытую цель или починила заблокированную
@@ -21,7 +24,7 @@ export default function CellTip({ tip }) {
     : meta.status === "blocked" && state === "ok" ? { cls: "t-ok", text: "Без запрета не проходит — эта стратегия починила" }
     : null;
   const answered = t.kind === "url" && [r, base].some((x) => /TLS1\.\d \d{3}/.test(x?.detail || "") && !/заморозка/.test(x.detail));
-  const style = below ? { left, top: box.bottom + 8 } : { left, bottom: window.innerHeight - box.top + 8 };
+  const style = below ? { left, top: box.bottom + 8 } : { left, bottom: vp.height - box.top + 8 };
   return (
     <div className="celltip" style={style} role="tooltip">
       <b>{t.name}</b>

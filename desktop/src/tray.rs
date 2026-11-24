@@ -53,12 +53,17 @@ impl State {
     }
 }
 
+/// Блокировки state и busy держим только на чтение и запись, но НЕ во время вызовов меню и значка:
+/// из фонового потока Tauri выполняет их в главном потоке и ждёт его, а главный поток (клик по пункту)
+/// сам берёт state — держать её во время перерисовки значит повесить программу.
+/// render_lock берут только фоновые потоки: две перерисовки не перемешиваются, главный поток его не ждёт.
 struct Items {
     zapret: CheckMenuItem<Wry>,
     tg: CheckMenuItem<Wry>,
     icon: TrayIcon<Wry>,
     state: Mutex<State>,
     busy: Mutex<bool>,
+    render_lock: Mutex<()>,
 }
 
 pub fn create(app: &AppHandle, backend: Arc<Backend>) -> tauri::Result<()> {
@@ -86,7 +91,14 @@ pub fn create(app: &AppHandle, backend: Arc<Backend>) -> tauri::Result<()> {
         })
         .build(app)?;
 
-    let items = Arc::new(Items { zapret, tg, icon, state: Mutex::new(State::default()), busy: Mutex::new(false) });
+    let items = Arc::new(Items {
+        zapret,
+        tg,
+        icon,
+        state: Mutex::new(State::default()),
+        busy: Mutex::new(false),
+        render_lock: Mutex::new(()),
+    });
     render(&items, &State::default(), true);
 
     {
@@ -103,7 +115,7 @@ pub fn create(app: &AppHandle, backend: Arc<Backend>) -> tauri::Result<()> {
     // опрос состояния: служба запрета живёт сама по себе и может смениться из окна или извне
     std::thread::spawn(move || loop {
         if !backend.quitting.load(std::sync::atomic::Ordering::SeqCst) {
-            refresh(&items, &backend);
+            refresh(&items, &backend, false);
         }
         std::thread::sleep(Duration::from_secs(3));
     });
@@ -116,17 +128,27 @@ enum Kind {
     Tg,
 }
 
-fn refresh(items: &Items, backend: &Backend) {
+/// Перерисовывать ли меню. Во время переключения пункт показывает «…» — не перетираем;
+/// после переключения (force) — обязательно, даже если состояние на вид то же.
+fn needs_render(cur: &State, next: &State, busy: bool, force: bool) -> bool {
+    !busy && (force || cur != next)
+}
+
+fn refresh(items: &Items, backend: &Backend, force: bool) {
     let next = match backend.get("/api/status") {
         Ok(s) => State::from(&s),
         Err(_) => State::default(),
     };
-    let mut cur = items.state.lock().unwrap();
-    // во время переключения пункт показывает «…», не перетираем его
-    if *cur != next && !*items.busy.lock().unwrap() {
-        render(items, &next, false);
-        *cur = next;
-    }
+    let _render = items.render_lock.lock().unwrap();
+    {
+        let busy = *items.busy.lock().unwrap();
+        let mut cur = items.state.lock().unwrap();
+        if !needs_render(&cur, &next, busy, force) {
+            return;
+        }
+        *cur = next.clone();
+    } // state и busy отпущены до вызовов меню
+    render(items, &next, false);
 }
 
 fn render(items: &Items, s: &State, force: bool) {
@@ -178,8 +200,7 @@ fn toggle(app: &AppHandle, items: &Arc<Items>, backend: &Arc<Backend>, kind: Kin
             std::thread::sleep(Duration::from_millis(1500));
         }
         *items.busy.lock().unwrap() = false;
-        *items.state.lock().unwrap() = State { online: false, ..State::default() }; // заставить перерисовать
-        refresh(&items, &backend);
+        refresh(&items, &backend, true); // снять «…» в любом случае, даже если сервер не ответил
         if let Err(e) = res {
             app.dialog()
                 .message(e)
@@ -193,5 +214,21 @@ fn toggle(app: &AppHandle, items: &Arc<Items>, backend: &Arc<Backend>, kind: Kin
 pub fn hide(app: &AppHandle) {
     if let Some(tray) = app.tray_by_id("main") {
         let _ = tray.set_visible(false);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_decision() {
+        let off = State::default();
+        let on = State { zapret_on: true, online: true, ..State::default() };
+        assert!(needs_render(&off, &on, false, false), "состояние сменилось");
+        assert!(!needs_render(&on, &on, false, false), "ничего не сменилось");
+        assert!(!needs_render(&off, &on, true, false), "идёт переключение — «…» не трогаем");
+        // сервер не ответил после переключения: и было, и стало «по умолчанию», но «…» снять нужно
+        assert!(needs_render(&off, &off, false, true));
     }
 }

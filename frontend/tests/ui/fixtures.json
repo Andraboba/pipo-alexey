@@ -1974,5 +1974,252 @@
   "hijack": [],
   "ms": 18349,
   "checked_at": 1795547325.6719167
+ },
+ "scan_last": {
+  "engine": "zapret2",
+  "engine_title": "zapret2 · kinlay0",
+  "targets": [
+   {
+    "id": "ft-DiscordMain",
+    "name": "DiscordMain",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://discord.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordGateway",
+    "name": "DiscordGateway",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://gateway.discord.gg",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordCDN",
+    "name": "DiscordCDN",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://cdn.discordapp.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-DiscordUpdates",
+    "name": "DiscordUpdates",
+    "kind": "url",
+    "group": "Discord",
+    "url": "https://updates.discord.com",
+    "about": "Discord · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-YouTubeWeb",
+    "name": "YouTubeWeb",
+    "kind": "url",
+    "group": "YouTube",
+    "url": "https://www.youtube.com",
+    "about": "YouTube · utils\\targets.txt сборки"
+   },
+   {
+    "id": "ft-YouTubeShort",
+    "name": "YouTubeShort",
+    "kind": "url",
+    "group": "YouTube",
+    "url": "https://youtu.be",
+    "about": "YouTube · utils\\targets.txt сборки"
+   }
+  ],
+  "baseline": {
+   "ft-DiscordMain": {
+    "score": 1,
+    "detail": "TLS1.2 200; TLS1.3 200",
+    "ms": 276
+   },
+   "ft-DiscordGateway": {
+    "score": 1,
+    "detail": "TLS1.2 404; TLS1.3 404",
+    "ms": 510
+   },
+   "ft-DiscordCDN": {
+    "score": 1,
+    "detail": "TLS1.2 403; TLS1.3 403",
+    "ms": 252
+   },
+   "ft-DiscordUpdates": {
+    "score": 1,
+    "detail": "TLS1.2 404; TLS1.3 404",
+    "ms": 173
+   },
+   "ft-YouTubeWeb": {
+    "score": 0,
+    "detail": "TLS1.2 ошибка 28; TLS1.3 ошибка 28",
+    "ms": 4077
+   },
+   "ft-YouTubeShort": {
+    "score": 0,
+    "detail": "TLS1.2 ошибка 28; TLS1.3 ошибка 28",
+    "ms": 4076
+   }
+  },
+  "rows": [
+   {
+    "strategy": "general (ALT14)",
+    "state": "done",
+    "results": {
+     "ft-DiscordMain": {
+      "score": 1,
+      "detail": "TLS1.2 200; TLS1.3 200",
+      "ms": 258
+     },
+     "ft-DiscordGateway": {
+      "score": 1,
+      "detail": "TLS1.2 404; TLS1.3 404",
+      "ms": 543
+     },
+     "ft-DiscordCDN": {
+      "score": 1,
+      "detail": "TLS1.2 403; TLS1.3 403",
+      "ms": 281
+     },
+     "ft-DiscordUpdates": {
+      "score": 1,
+      "detail": "TLS1.2 404; TLS1.3 404",
+      "ms": 255
+     },
+     "ft-YouTubeWeb": {
+      "score": 1,
+      "detail": "TLS1.2 200; TLS1.3 200",
+      "ms": 717
+     },
+     "ft-YouTubeShort": {
+      "score": 1,
+      "detail": "TLS1.2 303; TLS1.3 303",
+      "ms": 486
+     }
+    },
+    "score": 46,
+    "ms": 38116,
+    "of": 50,
+    "fixed": 4,
+    "broke": 1,
+    "grade": "partial",
+    "avg_ms": 706
+   },
+   {
+    "strategy": "general (ALT14e)",
+    "state": "done",
+    "results": {
+     "ft-DiscordMain": {
+      "score": 1,
+      "detail": "TLS1.2 200; TLS1.3 200",
+      "ms": 210
+     },
+     "ft-DiscordGateway": {
+      "score": 1,
+      "detail": "TLS1.2 404; TLS1.3 404",
+      "ms": 484
+     },
+     "ft-DiscordCDN": {
+      "score": 1,
+      "detail": "TLS1.2 403; TLS1.3 403",
+      "ms": 281
+     },
+     "ft-DiscordUpdates": {
+      "score": 1,
+      "detail": "TLS1.2 404; TLS1.3 404",
+      "ms": 184
+     },
+     "ft-YouTubeWeb": {
+      "score": 1,
+      "detail": "TLS1.2 200; TLS1.3 200",
+      "ms": 793
+     },
+     "ft-YouTubeShort": {
+      "score": 1,
+      "detail": "TLS1.2 303; TLS1.3 303",
+      "ms": 485
+     }
+    },
+    "score": 48,
+    "ms": 31348,
+    "of": 50,
+    "fixed": 6,
+    "broke": 1,
+    "grade": "partial",
+    "avg_ms": 581
+   },
+   {
+    "strategy": "general (ALT15)",
+    "state": "done",
+    "results": {
+     "ft-DiscordMain": {
+      "score": 1,
+      "detail": "TLS1.2 200; TLS1.3 200",
+      "ms": 258
+     },
+     "ft-DiscordGateway": {
+      "score": 1,
+      "detail": "TLS1.2 404; TLS1.3 404",
+      "ms": 508
+     },
+     "ft-DiscordCDN": {
+      "score": 1,
+      "detail": "TLS1.2 403; TLS1.3 403",
+      "ms": 244
+     },
+     "ft-DiscordUpdates": {
+      "score": 1,
+      "detail": "TLS1.2 404; TLS1.3 404",
+      "ms": 265
+     },
+     "ft-YouTubeWeb": {
+      "score": 1,
+      "detail": "TLS1.2 200; TLS1.3 200",
+      "ms": 772
+     },
+     "ft-YouTubeShort": {
+      "score": 1,
+      "detail": "TLS1.2 303; TLS1.3 303",
+      "ms": 518
+     }
+    },
+    "score": 47,
+    "ms": 34767,
+    "of": 50,
+    "fixed": 6,
+    "broke": 2,
+    "grade": "partial",
+    "avg_ms": 644
+   }
+  ],
+  "best": "general (ALT14e)",
+  "meta": {
+   "ft-DiscordMain": {
+    "cap": 1,
+    "status": "open"
+   },
+   "ft-DiscordGateway": {
+    "cap": 1,
+    "status": "open"
+   },
+   "ft-DiscordCDN": {
+    "cap": 1,
+    "status": "open"
+   },
+   "ft-DiscordUpdates": {
+    "cap": 1,
+    "status": "open"
+   },
+   "ft-YouTubeWeb": {
+    "cap": 1,
+    "status": "blocked"
+   },
+   "ft-YouTubeShort": {
+    "cap": 1,
+    "status": "blocked"
+   }
+  },
+  "counted": 6,
+  "blocked": 0,
+  "finished_at": 1795435280.715391
  }
 }
